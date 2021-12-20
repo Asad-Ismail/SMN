@@ -74,8 +74,8 @@ def fastrcnn_loss(class_logits, box_regression, labels, regression_targets):
     return classification_loss, box_loss
 
 
-def maskrcnn_inference(x, labels):
-    # type: (Tensor, List[Tensor]) -> List[Tensor]
+def maskrcnn_inference(x, labels,valid_classes=None):
+    # type: (Tensor, List[Tensor],List) -> List[Tensor]
     """
     From the results of the CNN, post process the masks
     by taking the mask corresponding to the class with max
@@ -95,11 +95,30 @@ def maskrcnn_inference(x, labels):
 
     # select masks corresponding to the predicted classes
     num_masks = x.shape[0]
-    boxes_per_image = [label.shape[0] for label in labels]
-    labels = torch.cat(labels)
-    index = torch.arange(num_masks, device=labels.device)
-    mask_prob = mask_prob[index, labels][:, None]
-    mask_prob = mask_prob.split(boxes_per_image, dim=0)
+    if valid_classes:
+    #if 0:
+        class_map={i:k for i,k in zip(valid_classes,torch.arange(1,len(valid_classes)+1))}
+        valid_labels=[torch.tensor([l for l in label if l in valid_classes],device=label.device) for label in labels]
+        boxes_per_image = [label.shape[0] for label in valid_labels]
+        labels = torch.cat(labels)
+        valid_labels = torch.cat(valid_labels)
+        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=valid_labels.device) if labels[i] in valid_classes],dtype=torch.int64)
+        valid_labels=torch.tensor([class_map[l.item()] for l in valid_labels if l in valid_classes],device=valid_labels.device)
+        mask_prob = mask_prob[valid_indices, valid_labels][:, None]
+        mask_prob = mask_prob.split(boxes_per_image, dim=0)
+    else:
+        boxes_per_image = [label.shape[0] for label in labels]
+        labels = torch.cat(labels)
+        valid_indices = torch.arange(num_masks, device=labels.device)
+        #index = torch.arange(num_masks, device=labels.device)
+        mask_prob = mask_prob[valid_indices, labels][:, None]
+        mask_prob = mask_prob.split(boxes_per_image, dim=0)
+        
+    #boxes_per_image = [label.shape[0] for label in labels]
+    #labels = torch.cat(labels)
+    #index = torch.arange(num_masks, device=labels.device)
+    #mask_prob = mask_prob[index, labels][:, None]
+    #mask_prob = mask_prob.split(boxes_per_image, dim=0)
 
     return mask_prob
 
@@ -116,6 +135,9 @@ def project_masks_on_boxes(gt_masks, boxes, matched_idxs, M):
     matched_idxs = matched_idxs.to(boxes)
     rois = torch.cat([matched_idxs[:, None], boxes], dim=1)
     gt_masks = gt_masks[:, None].to(rois)
+    torch.save(gt_masks,"gt_masks.pt")
+    torch.save(rois,"rois.pt")
+    torch.save(M,"m.pt")
     return roi_align(gt_masks, rois, (M, M), 1.)[:, 0]
 
 def get_class_targets(gt_class,matched_idxs):
@@ -125,8 +147,8 @@ def get_class_targets(gt_class,matched_idxs):
     #pass
 
 
-def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs,maskloss=None):
-    # type: (Tensor, List[Tensor], List[Tensor], List[Tensor], List[Tensor],nn.Module) -> Tensor
+def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs,maskloss=None,valid_classes=None):
+    # type: (Tensor, List[Tensor], List[Tensor], List[Tensor], List[Tensor],nn.Module,List) -> Tensor
     """
     Args:
         proposals (list[BoxList])
@@ -140,25 +162,43 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
     discretization_size = mask_logits.shape[-1]
     labels = [gt_label[idxs] for gt_label, idxs in zip(gt_labels, mask_matched_idxs)]
     mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
-
     labels = torch.cat(labels, dim=0)
     mask_targets = torch.cat(mask_targets, dim=0)
-
     # torch.mean (in binary_cross_entropy_with_logits) doesn't
     # accept empty tensors, so handle it separately
     if mask_targets.numel() == 0:
+        print(f"Encountered 0 labels in proposal!!!!!!!!!!!!!!!")
         return mask_logits.sum() * 0
-
-    inputs= mask_logits[torch.arange(labels.shape[0], device=labels.device), labels]
-    if maskloss is not None:
-        mask_loss=maskloss(inputs,mask_targets)
+    if labels.numel()==0:
+        print(f"Encountered 0 labels in proposal!!!!!!!!!!!!!!!")
+        return mask_logits.sum() * 0
+    if valid_classes:
+        print(f"Mask Loss for backbone class!!!!!!!!")
+        # Convert from classes index from original to mask classes
+        class_map={i:k.item() for i,k in zip(valid_classes,torch.arange(1,len(valid_classes)+1))}
+        valid_indices=[i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes]
+        if len(valid_indices)==0:
+            print(f"Encountered 0 valid labels after filtering!!!!!!!!!!!!!")
+            return mask_logits.sum() * 0
+        valid_indices=torch.tensor(valid_indices,dtype=torch.int64)
+        valid_labels=torch.tensor([class_map[l.item()] for l in labels if l in valid_classes],device=labels.device)
+        mask_targets=mask_targets[valid_indices]
     else:
-        mask_loss = F.binary_cross_entropy_with_logits(mask_logits[torch.arange(labels.shape[0], device=labels.device), labels], mask_targets)
+        print(f"Mask Loss for original class!!!!!!!!")
+        valid_indices=torch.arange(labels.shape[0], device=labels.device)
+        valid_labels=labels
+        #inputs= mask_logits[torch.arange(labels.shape[0], device=labels.device), labels]
+    inputs= mask_logits[valid_indices, valid_labels]
+    if maskloss is not None:
+        #combine both cross entropy and dice loss
+        mask_loss=maskloss(inputs,mask_targets)+F.binary_cross_entropy_with_logits(inputs, mask_targets)
+    else:
+        mask_loss = F.binary_cross_entropy_with_logits(inputs, mask_targets)
     return mask_loss
 
 
-def headclass_loss(class_logits, gt_class, gt_labels, mask_matched_idxs):
-    # type: (Tensor, List[Tensor], List[Tensor], List[Tensor]) -> Tensor
+def headclass_loss(class_logits, gt_class, gt_labels, mask_matched_idxs,valid_classes=None):
+    # type: (Tensor, List[Tensor], List[Tensor], List[Tensor],list) -> Tensor
     """
     Args:
         proposals (list[BoxList])
@@ -171,22 +211,30 @@ def headclass_loss(class_logits, gt_class, gt_labels, mask_matched_idxs):
 
     labels = [gt_label[idxs] for gt_label, idxs in zip(gt_labels, mask_matched_idxs)]
     class_targets =  [get_class_targets(c, i) for c, i in zip(gt_class, mask_matched_idxs)]
-
+    # mask unrelated classes
     labels = torch.cat(labels, dim=0)
     class_targets = torch.cat(class_targets, dim=0)
-
+    if labels.numel() == 0:
+        print(f"No labels for class loss")
+        return class_logits.sum() * 0
+    mask=[True if l in valid_classes else False for l in labels]
+    mask=torch.tensor(mask,device=class_targets.device)
     # torch.mean (in binary_cross_entropy_with_logits) doesn't
     # accept empty tensors, so handle it separately
     if class_targets.numel() == 0:
         return class_logits.sum() * 0
     
-    class_loss = F.cross_entropy(class_logits, class_targets)
+    #class_loss = F.cross_entropy(class_logits, class_targets)
+    #mask unrelated classes
+    class_loss = F.cross_entropy(class_logits, class_targets,reduction="none")*mask.float()
+    class_loss=class_loss.sum()/mask.float().sum()
     return class_loss
 
 
-def headclass_inference(x, labels):
-    # type: (Tensor, List[Tensor]) -> List[Tensor]
+def headclass_inference(x, labels,valid_classes=None):
+    # type: (Tensor, List[Tensor],List) -> List[Tensor]
     """
+    
     From the results of the CNN, post process the class
     by taking the class corresponding to the class with max
     probability (which are of fixed size and directly output
@@ -202,13 +250,23 @@ def headclass_inference(x, labels):
             the extra field mask
     """
     class_prob = x.softmax(dim=-1)
-
-    # select class corresponding to the predicted classes
-    #num_class = x.shape[0]
-    boxes_per_image = [label.shape[0] for label in labels]
-    #index = torch.arange(num_class, device=labels.device)
-    class_prob = torch.argmax(class_prob,dim=-1)
-    class_prob = class_prob.split(boxes_per_image, dim=0)
+    #if 0:
+    if valid_classes:
+        valid_labels=[torch.tensor([l for l in label if l in valid_classes],device=label.device) for label in labels]
+        boxes_per_image = [label.shape[0] for label in valid_labels]
+        #valid_labels = torch.cat(valid_labels)
+        labels=torch.cat(labels)
+        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes],dtype=torch.int64)
+        class_prob = class_prob[valid_indices]
+        class_prob = torch.argmax(class_prob,dim=-1)
+        class_prob = class_prob.split(boxes_per_image, dim=0)
+    else:
+        # select class corresponding to the predicted classes
+        #num_class = x.shape[0]
+        boxes_per_image = [label.shape[0] for label in labels]
+        #index = torch.arange(num_class, device=labels.device)
+        class_prob = torch.argmax(class_prob,dim=-1)
+        class_prob = class_prob.split(boxes_per_image, dim=0)
     return class_prob
 
 
@@ -584,6 +642,7 @@ class RoIHeads(nn.Module):
                  mask_roi_pool=None,
                  mask_head=None,
                  mask_predictor=None,
+                 mask_valid_classes=None,
                  keypoint_roi_pool=None,
                  keypoint_head=None,
                  keypoint_predictor=None,
@@ -595,6 +654,7 @@ class RoIHeads(nn.Module):
                 kp_name=None,
                 segm_names=None,segm_labels=None,
                 class_names=None,class_labels=None,
+                class_valid_classes=None,
                 reg_names=None,reg_labels=None 
                  ):
         super(RoIHeads, self).__init__()
@@ -625,6 +685,7 @@ class RoIHeads(nn.Module):
         self.mask_roi_pool = mask_roi_pool
         self.mask_head = mask_head
         self.mask_predictor = mask_predictor
+        self.mask_valid_classes = mask_valid_classes
 
         self.keypoint_roi_pool = keypoint_roi_pool
         self.keypoint_head = keypoint_head
@@ -635,6 +696,7 @@ class RoIHeads(nn.Module):
         self.class_roi_pool = class_roi_pool
         self.class_head = class_head
         self.class_predictor = class_predictor
+        self.class_valid_classes = class_valid_classes
         
         
         ## Add names and label names of semgntaion, classification and regression tasks
@@ -647,6 +709,7 @@ class RoIHeads(nn.Module):
         self.reg_labels=reg_labels
         ##Better MaskLoss
         self.maskloss=DiceBCELoss() 
+        #self.maskloss=None
         
 
     def has_mask(self):
@@ -926,12 +989,20 @@ class RoIHeads(nn.Module):
                 for i in range(len(self.mask_roi_pool)):
                     gt_masks = [t[self.segm_labels[i]] for t in targets]
                     gt_labels = [t["labels"] for t in targets]
-                    rcnn_loss_mask = maskrcnn_loss(mask_logits[i], mask_proposals,gt_masks, gt_labels, pos_matched_idxs,maskloss=self.maskloss)
+                    # For first mask head predict mask for all classes for rest use valid class parameters
+                    if i<1:
+                        rcnn_loss_mask = maskrcnn_loss(mask_logits[i], mask_proposals,gt_masks, gt_labels, pos_matched_idxs,maskloss=self.maskloss)
+                    else:
+                        rcnn_loss_mask = maskrcnn_loss(mask_logits[i], mask_proposals,gt_masks, gt_labels, pos_matched_idxs,maskloss=self.maskloss,valid_classes=self.mask_valid_classes[i])
                     loss_mask[self.segm_names[i]]=rcnn_loss_mask
             else:
                 labels = [r["labels"] for r in result]
                 for i in range(len(self.mask_roi_pool)):
-                    masks_probs = maskrcnn_inference(mask_logits[i], labels)
+                    if i<1:
+                        masks_probs = maskrcnn_inference(mask_logits[i], labels)
+                    else:
+                        masks_probs = maskrcnn_inference(mask_logits[i], labels,valid_classes=self.mask_valid_classes[i])
+                        
                     for mask_prob, r in zip(masks_probs, result):
                         r[self.segm_names[i]] = mask_prob
 
@@ -983,8 +1054,6 @@ class RoIHeads(nn.Module):
 
             losses.update(loss_keypoint)
             
-        
-        
         # Class Detection
         if self.has_headclass():
             class_proposals = [p["boxes"] for p in result]
@@ -1022,12 +1091,12 @@ class RoIHeads(nn.Module):
                 for i in range(len(self.class_roi_pool)):
                     gt_class = [t[self.class_labels[i]] for t in targets]
                     gt_labels = [t["labels"] for t in targets]
-                    rcnn_loss_classhead = headclass_loss(class_logits[i],gt_class, gt_labels, pos_matched_idxs)
+                    rcnn_loss_classhead = headclass_loss(class_logits[i],gt_class, gt_labels, pos_matched_idxs,valid_classes=self.class_valid_classes[i])
                     loss_class[self.class_names[i]]=rcnn_loss_classhead
             else:
                 labels = [r["labels"] for r in result]
                 for i in range(len(self.class_roi_pool)):
-                    class_probs = headclass_inference(class_logits[i], labels)
+                    class_probs = headclass_inference(class_logits[i], labels,valid_classes=self.class_valid_classes[i])
                     for class_prob, r in zip(class_probs, result):
                         r[self.class_names[i]] = class_prob
 

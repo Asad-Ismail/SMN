@@ -182,10 +182,11 @@ class Vegnet(FasterRCNN):
                  keypoint_roi_pool=None, keypoint_head=None, keypoint_predictor=None,
                  num_keypoints=2,
                  #Classification head
-                 class_roi_pool=None, class_head=None, class_predictor=None,
+                 class_roi_pool=None, class_head=None, class_predictor=None,class_classes=None,
+                 class_map=None,
                  ### Build specific branches for each task
                  kp_name=None,
-                 segm_names=None,segm_labels=None,
+                 segm_names=None,segm_labels=None,segm_classes=None,
                  class_names=None,class_labels=None,class_numclass=None,
                  reg_names=None,reg_labels=None):
 
@@ -206,6 +207,7 @@ class Vegnet(FasterRCNN):
             mask_roi_pool=nn.ModuleList()
             mask_head=nn.ModuleList()
             mask_predictor=nn.ModuleList()
+            valid_segm_classes=[]
             for i,name in enumerate(segm_names):
                 #maskroi pool
                 mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
@@ -218,8 +220,11 @@ class Vegnet(FasterRCNN):
                 #maskroi predictor
                 mask_predictor_in_channels = 256  # == mask_layers[-1]
                 mask_dim_reduced = 256
-                mask_predictor_tmp = MaskRCNNPredictor(mask_predictor_in_channels, mask_dim_reduced, num_classes,i)
+                mask_predictor_tmp = MaskRCNNPredictor(mask_predictor_in_channels, mask_dim_reduced, num_classes=len(segm_classes[i])+1,index=i)
                 mask_predictor.append(mask_predictor_tmp)
+                # Find the index of valid classes like some 
+                v_index=[j for j, e in enumerate(class_map,start=1) if e in segm_classes[i]]
+                valid_segm_classes.append(v_index)
         
         if kp_name:
             ## Keypoint Detection stuff
@@ -238,6 +243,7 @@ class Vegnet(FasterRCNN):
             class_roi_pool=nn.ModuleList()
             class_head=nn.ModuleList()
             class_predictor=nn.ModuleList()
+            valid_class_classes=[]
             for i,name in enumerate(class_names):
                 #classroi pool
                 class_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
@@ -250,8 +256,12 @@ class Vegnet(FasterRCNN):
                 #classroi predictor
                 class_predictor_in_channels = 256  # == mask_layers[-1]
                 class_dim_reduced = 256
-                class_predictor_tmp = ClassRCNNPredictor(class_predictor_in_channels, class_dim_reduced, class_numclass[i],i)
+                # num classes+1 to add background class also used for unknown class
+                class_predictor_tmp = ClassRCNNPredictor(class_predictor_in_channels, class_dim_reduced, class_numclass[i]+1,i)
                 class_predictor.append(class_predictor_tmp)
+                # Find the index of valid classes like some 
+                v_index=[j for j, e in enumerate(class_map,start=1) if e in class_classes[i]]
+                valid_class_classes.append(v_index)
 
         super(Vegnet, self).__init__(
             backbone, num_classes,
@@ -286,11 +296,13 @@ class Vegnet(FasterRCNN):
         
         self.roi_heads.mask_roi_pool = mask_roi_pool
         self.roi_heads.mask_head = mask_head
-        self.roi_heads.mask_predictor = mask_predictor
+        self.roi_heads.mask_predictor =mask_predictor
+        self.roi_heads.mask_valid_classes = valid_segm_classes
         
         self.roi_heads.class_roi_pool = class_roi_pool
         self.roi_heads.class_head = class_head
         self.roi_heads.class_predictor = class_predictor
+        self.roi_heads.class_valid_classes = valid_class_classes
 
 
 

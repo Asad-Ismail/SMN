@@ -1,3 +1,7 @@
 *.pth
 *.pt
-*__pycacahe__/
+*__pycache__/
+*.vscode/
+*data/
+mask_backbone_keypoint__rating_weights/
+

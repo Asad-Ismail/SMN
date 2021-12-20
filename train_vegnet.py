@@ -1,5 +1,4 @@
 
-
 from torch.utils import data
 import torchvision
 #import vision_transforms as vTransform
@@ -18,7 +17,15 @@ from veg_model.vegnet_v1 import *
 from torch.utils.mobile_optimizer import optimize_for_mobile
 import yaml
 
-def get_transform(train):
+
+#build model
+config_file="model_config.yaml"
+with open(config_file, "r") as yamlfile:
+    config = yaml.load(yamlfile, Loader=yaml.FullLoader)
+
+
+
+def get_transform():
     transform = T.Compose([T.ToTensor()])
     return transform
 
@@ -29,49 +36,18 @@ def vis_mask(img,mask,color=(0,255,0)):
     for i in range(len(ys)):
         cv2.circle(img,(xs[i],ys[i]),1,color,-1)
         
-        
+ 
 def build_model(config):
-    valid_tasks=["regression", "classification","segmentation","keypoints"]
-    # Build lists for segmentations, classification and regression, keypoints we just need one
-    segm_names=[]
-    segm_labels=[]
-    class_names=[]
-    class_labels=[]
-    class_numclass=[]
-    reg_names=[]
-    reg_labels=[]
-    kp_name=None
-    kp_num=None
-    # read all segmentation, classification, regression settings from yaml file
-    for pk,pv in config.items():
-        if pk=="numclasses":
-            num_class=pv
-            continue
-        if pk=="classes":
-            continue
-        type=pv["type"]
-        if type not in valid_tasks:
-            raise ValueError(f"{type} is not a valid task!!")
-        else:
-            if type =="regression":
-                reg_names.append(pk)
-                reg_labels.append(pv["labelname"])
-            elif type =="classification":
-                class_names.append(pk)
-                class_labels.append(pv["labelname"])
-                class_numclass.append(pv["numclasses"])
-            elif type=="segmentation":
-                segm_names.append(pk)
-                segm_labels.append(pv["labelname"])
-            elif type=="keypoints":
-                kp_name=pk
-                kp_num=pv["num"]
-    
-    model = vegnet_resnet50_fpn(pretrained=True,num_classes=num_class,num_keypoints=kp_num,kp_name=kp_name,
-                                segm_names=segm_names,segm_labels=segm_labels,class_names=class_names,class_labels=class_labels,class_numclass=class_numclass,
-                                reg_names=reg_names,reg_labels=reg_labels)
+    model = vegnet_resnet50_fpn(pretrained=True,num_classes=config["numclasses"],class_map=config["classes"],num_keypoints=config["keypoints"]["num"],kp_name=config["keypoints"]["name"],
+                                segm_names=config["segmentation"]["name"],segm_labels=config["segmentation"]["name"],segm_classes=config["segmentation"]["classes"],
+                                class_names=config["classification"]["name"],class_labels=config["classification"]["name"],class_numclass=config["classification"]["numclasses"],
+                                class_classes=config["classification"]["classes"],reg_names=config["regression"]["name"],reg_labels=config["regression"]["name"])
     return model
-            
+ 
+ 
+
+
+model=build_model(config)    
 # read and build dataset loader
 kp_file = "/media/asad/adas_cv_2/test_kp.csv"
 backbone="/media/asad/adas_cv_2/backbone_labels.json"
@@ -80,15 +56,14 @@ root_dir = "/media/asad/ADAS_CV/datasets_Vegs/pepper/one_annotated/train/"
 gt_points = load_points_dataset(kp_file)
 backbone= load_backbone(backbone)
 rating= load_backbone(rating)
-dataset=VegDataset(root_dir, root_dir, kp_file, gt_points,backbone=backbone,rating=rating,resize=None, vis=True, transform=get_transform(train=True))
-#for d in dataset:
-#    pass
+dataset=VegDataset(root_dir, root_dir, kp_file, gt_points,backbone=backbone,rating=rating,resize=None, vis=True, transform=get_transform())
+
+for i,t in dataset:
+    print(i)
+    print(t)
+
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1,collate_fn=detection_utils.collate_fn)
 
-#build model
-config_file="model_config.yaml"
-with open(config_file, "r") as yamlfile:
-    config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
 model=build_model(config)
 
@@ -146,7 +121,7 @@ else:
     for images,data in data_loader:
     #images,targets = next(iter(data_loader))
         images = list(image.to(device) for image in images)
-        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","2000_epoch_weights")))
+        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","3000_epoch_weights")))
         #model.load_state_dict(torch.load("/home/asad/projs/vegNetPytorch/mask_keypoint_weights/950_epoch_weights"))
         model.eval()
         predictions = model(images)   

@@ -3,6 +3,7 @@ import cv2
 import random
 import warnings
 import scipy
+from scipy.linalg.basic import solve_circulant
 import skimage
 import skimage.transform
 from distutils.version import LooseVersion
@@ -12,6 +13,7 @@ import json
 
 from torch.functional import Tensor
 
+np.random.seed(42)
 
 def load_points_dataset(f_p):
     """load keypoints(head/tail)from the text file
@@ -55,10 +57,123 @@ def load_points_dataset(f_p):
     return points
 
 
+
+def load_points_dataset_2(f_p,label_name=["head","tail"]):
+    """load keypoints(head/tail)from the text file
+    Args:
+        f_p ([str]): File path containing the head and tail points (x,y) of each fruit in the image. Each Image can have multiple fruits
+
+    Returns:
+        [dict]: Dictionary of file names as keys and corresponding fruit points as values
+    """
+    with open(f_p, "r") as f:
+        all_lines = f.readlines()
+    points = {}
+    i = 0
+    while i < len(all_lines):
+        if i > len(all_lines):
+            break
+        line = all_lines[i].split(",")
+        label = line[0]
+        file = line[3]
+        first_point = None
+        second_point = None
+        if label == label_name[0]:
+            first_point = (int(line[1]), int(line[2]))
+        elif label == label_name[1]:
+            second_point = (int(line[1]), int(line[2]))
+        i += 1
+        if i < len(all_lines):
+            line2 = all_lines[i].split(",")
+            if line2[3] == file:
+                if line2[0] == label_name[0]:
+                    first_point = (int(line2[1]), int(line2[2]))
+                elif line2[0] == label_name[1]:
+                    second_point = (int(line2[1]), int(line2[2]))
+                i += 1
+        if not first_point and not second_point:
+            continue
+        if file in points:
+            # file already in dictionary append the list
+            # print(f"Appending the file to existing one {file}")
+            points[file].append([first_point, second_point])
+        else:
+            points[file] = [[first_point, second_point]]
+    return points
+
+
+
+def load_class_dataset(f_p,label_name=["rating","neck"]):
+    """load keypoints(head/tail)from the text file
+    Args:
+        f_p ([str]): File path containing the head and tail points (x,y) of each fruit in the image. Each Image can have multiple fruits
+
+    Returns:
+        [dict]: Dictionary of file names as keys and corresponding fruit points as values
+    """
+    with open(f_p, "r") as f:
+        all_lines = f.readlines()
+    points = {}
+    i = 0
+    while i < len(all_lines):
+        if i > len(all_lines):
+            break
+        line = all_lines[i].split(",")
+        label = line[0]
+        splitted_labels=label.split("_")
+        file = line[3]
+        coords= None
+        if splitted_labels[0] in label_name:
+            coords = (int(line[1]), int(line[2]))
+        i += 1
+        if coords is None:
+            continue
+        if file in points:
+            # file already in dictionary append the list
+            # print(f"Appending the file to existing one {file}")
+            if splitted_labels[0] in points[file]:
+                points[file][splitted_labels[0]].append([coords,int(splitted_labels[1])])
+            else:
+                points[file][splitted_labels[0]]=[[coords,int(splitted_labels[1])]]
+        else:
+            points[file]={splitted_labels[0]:[[coords, int(splitted_labels[1])]]}
+    return points
+
+def load_segmentation_dataset(f_p,label_names=None):
+    """"
+    Returns:
+        [dict]: Dictionary of list with names 
+    """
+    data=load_json(f_p)
+    cat_map={}
+    for cat in data["categories"]:
+        if cat["name"] in label_names:
+            cat_map[cat['id']]=cat["name"] 
+    image_map={}
+    for cat in data["images"]:
+        image_map[cat['id']]=cat["file_name"] 
+    annos={}
+    for d in data["annotations"]:
+        tmp=[]
+        seg=d["segmentation"][0]
+        for i in range(0,len(seg)-1,2):
+            tmp.append([seg[i],seg[i+1]]) 
+        if image_map[d["image_id"]] not in annos:
+            annos[image_map[d["image_id"]]]=[{"class_id":cat_map[d["category_id"]],"annotation":tmp}]
+        else:
+            annos[image_map[d["image_id"]]].append({"class_id":cat_map[d["category_id"]],"annotation":tmp})
+    return annos
+
+
 def load_backbone(filename):
     with open(filename) as f:
         back_annotation = json.load(f)
     return back_annotation
+
+def load_json(filename):
+    with open(filename) as f:
+        annotation = json.load(f)
+    return annotation
 
 
 def extract_bboxes(mask):
@@ -262,6 +377,16 @@ def vis_mask(vis_img,indicies,color=(255,120,0)):
         # viusalize masks
         cv2.circle(vis_img, (x, y), 1, color, 1)
 
+def resize_images_cv(img):
+    scale_percent = 40 # percent of original size
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    
+    # resize image
+    resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    return resized
+
 def vis_dataset(image, masks, bboxs, keypoints, label="",box_format="yx",back_masks=None):
     vis_img = image.copy()
     if back_masks is not None:
@@ -286,6 +411,78 @@ def vis_dataset(image, masks, bboxs, keypoints, label="",box_format="yx",back_ma
             cv2.rectangle(vis_img, (bbox[1], bbox[0]), (bbox[3], bbox[2]), (255, 255, 0), 2)
     cv2.imshow(label, vis_img)
     cv2.waitKey(0)
+
+
+def write_text(image,text,point=(0,0),color=(255,0,0)):
+    # font
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    # fontScale
+    fontScale = 1
+
+    # Line thickness of 2 px
+    thickness = 3
+
+    # Using cv2.putText() method
+    image = cv2.putText(image, text, point, font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
+    return image
+    
+
+def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
+    vis_img = image.detach().numpy()
+    vis_img=np.moveaxis(vis_img, 0, -1)
+    vis_img=vis_img.copy()
+    class_color={i:[random.uniform(0,1) for _ in range(3)] for i in np.unique(classes)}
+    # offset for drawing text
+    off_x=20
+    off_y=50
+    # seperate indexes for labels with differnet shapes
+    other_mask_id=0
+    # donot need seperate index for kp since kp size and class id is equal to mask size with visible tunred off for classes not compatible
+    kp_id=0
+    class_id=0
+    for i in range(masks.shape[0]):
+        mask = masks[i][...,None].detach().numpy()
+        bbox = np.int0(bboxs[i].detach().numpy().copy())
+        indicies = np.where(mask >= 0.5)
+        vis_mask(vis_img,indicies=indicies,color=class_color[classes[i]])
+        # Visualize bounding box
+        cv2.rectangle(vis_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), class_color[classes[i]], 2)
+        # write class name
+        write_text(vis_img,classes[i],((bbox[0], bbox[1])))
+        # Visualize segm classes
+        if "other_masks" in kwargs and "seg_labels" in kwargs:
+            for j,k in enumerate(kwargs["other_masks"].keys(),start=1):
+                if classes[i] in kwargs["seg_labels"][j]: 
+                    m=kwargs["other_masks"][k][other_mask_id][...,None].detach().numpy()
+                    indicies = np.where(m >= 0.5)
+                    vis_mask(vis_img,indicies=indicies,color=(0,0,255))
+                    other_mask_id+=1
+                    
+        ## Visualize keypoints
+        if "kp_labels" in kwargs:
+            if classes[i] in kwargs["kp_labels"]: 
+                keypoint = np.int0(keypoints[i].detach().numpy())
+                # Visualize Keypoints
+                cv2.circle(vis_img, (keypoint[0][0], keypoint[0][1]), 1, (0, 0, 255), 10)
+                write_text(vis_img,"Head",(keypoint[0][0]+off_x, keypoint[0][1]+off_y))
+                cv2.circle(vis_img, (keypoint[1][0], keypoint[1][1]), 1, (124, 0, 255), 10)
+                write_text(vis_img,"Tail",(keypoint[1][0]+off_x, keypoint[1][1]+off_y))
+                    
+        # visualize classification
+        if "clas" in kwargs and "clas_labels" in kwargs:
+                for j,k in enumerate(kwargs["clas"].keys(),start=0):
+                    if classes[i] in kwargs["clas_labels"][j]:
+                        cl=kwargs["clas"][k][i].cpu().item()
+                        point=(bbox[0]+(bbox[2]-bbox[0])//2+j*off_x,bbox[1]+(bbox[3]-bbox[1])//2+j*off_y)
+                        write_text(vis_img,f"{k}: {cl}",point=point,color=(0,0,255))
+                
+                    
+    vis_img=resize_images_cv(vis_img)
+    cv2.imshow("Input and labels", vis_img)
+    cv2.waitKey(0)
+
 
 
 def resize_points(points, scale, window):
