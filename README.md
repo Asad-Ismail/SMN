@@ -1,6 +1,5 @@
 ## All with One Image Net (SMN)
-## [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Asad-Ismail/SMN/issues)
-  [![HitCount](http://hits.dwyl.com/Asad-Ismail/SMN.svg?style=flat-square)](http://hits.dwyl.com/Asad-Ismail/SMN)
+## [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Asad-Ismail/SMN/issues) ![HitCount](http://hits.dwyl.com/Asad-Ismail/SMN.svg?style=flat-square)](http://hits.dwyl.com/Asad-Ismail/SMN)]
 
 
 
