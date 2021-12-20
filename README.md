@@ -21,7 +21,7 @@ So we have object detection problem, instance segmtentation problem multiple mul
   </p>
 
 
-Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In this case n=2 for Neck and rating but in general can be N classification and N regression problems. The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
+Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems. The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
 
 ### Proposed solution
 Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In this case n=2 for Neck and rating but in general can be N classification and N regression problems.
