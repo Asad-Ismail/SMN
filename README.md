@@ -28,7 +28,7 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
 * The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
 
 <p align="center">
-    <img src="figs/SMN.png" alt="animated" width=750 height=500 />
+    <img src="figs/SMN.png" alt="animated" width=650 height=400 />
   </p>
 
 ### Example Input Image
