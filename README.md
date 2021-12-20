@@ -39,6 +39,7 @@ So we have object detection problem, instance segmtentation problem multiple mul
   <p align="center">
     <img src="figs/img.png" alt="animated" width=700 height=500 />
   </p> 
+  
 ### Example Annotated Image
   <p align="center">
     <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
