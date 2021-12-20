@@ -25,7 +25,7 @@ Typically there are two way to solve this.
 First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
 
   <p align="center">
-    <img src="figs/pointnet.png" alt="animated" width=550 height=200 />
+    <img src="figs/pointnet.png" alt="animated" width=550 height=300 />
   </p>
   
   <p align="center">
@@ -33,7 +33,7 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
   </p>
   
   <p align="center">
-    <img src="figs/resnet34_2.png" alt="animated" width=750 height=200 />
+    <img src="figs/resnet34_2.png" alt="animated" width=650 height=200 />
   </p>
 
 
