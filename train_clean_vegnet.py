@@ -32,7 +32,7 @@ def get_transform():
     return transform
 
 def vis_mask(img,mask,color=(0,255,0)):
-    indxes=np.where(mask>=0.5)
+    indxes=np.where(mask>=0.01)
     ys=indxes[0]
     xs=indxes[1]
     for i in range(len(ys)):
@@ -53,9 +53,31 @@ def vis_and_process_preds(image,prediction,dataset,test_th=0.9):
     neck=prediction["neck"][v_s_c].cpu()
     image=image.cpu()
     label_map=[dataset.rev_class_map[i.item()] for i in classes]
-    vis_gen(image,masks,boxes,keypoints,label_map, \
-        other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
-        seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
+    
+    
+    cv_image=images[0].detach().cpu().numpy()*255
+    cv_image=np.ascontiguousarray(np.moveaxis(cv_image, 0, -1),dtype=np.uint8)
+    m_ind=0
+    for i in range(boxes.shape[0]):
+        mask=masks[i].detach().squeeze().cpu().numpy()
+        vis_mask(cv_image,mask)
+        if classes[i]==2:
+            back=bb[m_ind].detach().squeeze().cpu().numpy()
+            vis_mask(cv_image,back,(255,0,255))
+            m_ind+=1
+    scale_percent = 30 # percent of original size
+    width = int(cv_image.shape[1] * scale_percent / 100)
+    height = int(cv_image.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    
+    # resize image
+    resized = cv2.resize(cv_image, dim, interpolation = cv2.INTER_AREA)
+    
+    cv2.imshow("Results",resized)
+    cv2.waitKey(0)
+    #vis_gen(image,masks,boxes,keypoints,label_map, \
+    #    other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
+    #    seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
     print(56)
         
  
@@ -99,7 +121,8 @@ model.to(device)
 #print(model)
 train=True
 #pretrain="mask_keypoint_weights/950_epoch_weights"
-pretrain=os.path.join("mask_backbone_keypoint__rating_weights","20000_epoch_weights")
+#pretrain=os.path.join("mask_backbone_keypoint__rating_weights","20000_epoch_weights")
+pretrain= None
 if pretrain:
     print(f"loading pretrained !!!!")
     state_dict=torch.load(pretrain)
@@ -109,7 +132,7 @@ if train:
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True,collate_fn=detection_utils.collate_fn)
     # construct an optimizer
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=0.00001,
+    optimizer = torch.optim.SGD(params, lr=0.001,
                                 momentum=0.9, weight_decay=0.0005)
     # and a learning rate scheduler
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
@@ -135,10 +158,12 @@ if train:
 
 else:
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
-    for images,data in data_loader:
+    for i,(images,data) in enumerate(data_loader):
     #images,targets = next(iter(data_loader))
+        if i<1:
+            continue
         images = list(image.to(device) for image in images)
-        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","20000_epoch_weights")))
+        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","10000_epoch_weights")))
         #model.load_state_dict(torch.load("/home/asad/projs/vegNetPytorch/mask_keypoint_weights/950_epoch_weights"))
         model.eval()
         predictions = model(images)   

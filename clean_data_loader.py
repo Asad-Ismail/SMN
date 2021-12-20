@@ -253,3 +253,7 @@ if __name__ == "__main__":
     for i in range(len(dataset)):
         data = dataset[i]
         print(data)
+    for i in range(len(dataset)):
+        data = dataset[i]
+        print(data)
+

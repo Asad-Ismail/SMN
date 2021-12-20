@@ -456,7 +456,7 @@ def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
             for j,k in enumerate(kwargs["other_masks"].keys(),start=1):
                 if classes[i] in kwargs["seg_labels"][j]: 
                     m=kwargs["other_masks"][k][other_mask_id][...,None].detach().numpy()
-                    indicies = np.where(m >= 0.5)
+                    indicies = np.where(m >= 0.1)
                     vis_mask(vis_img,indicies=indicies,color=(0,0,255))
                     other_mask_id+=1
                     

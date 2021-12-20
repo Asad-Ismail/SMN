@@ -194,7 +194,8 @@ class Vegnet(FasterRCNN):
         
         if min_size is None:
             # can fix the size for inference
-            min_size = (640, 672, 704, 736, 768, 800)
+            min_size = (800)
+            #min_size = (640, 672, 704, 736, 768, 800)
 
         if num_classes is not None:
             if keypoint_predictor is not None:
@@ -210,7 +211,7 @@ class Vegnet(FasterRCNN):
             valid_segm_classes=[]
             for i,name in enumerate(segm_names):
                 #maskroi pool
-                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
+                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=28, sampling_ratio=2)
                 mask_roi_pool.append(mask_roi_pool_tmp)
                 #maskroi heads
                 mask_layers = (256, 256, 256, 256)
