@@ -20,9 +20,10 @@ So we have object detection problem, instance segmtentation problem multiple mul
   </p>
 
 
-Typically there are two way to solve this. One is to have two CNNs one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
+Typically there are two way to solve this.
+* MaskRCNN with Keypoint Detector + Seperate CNN for per fruit Classification/Regression
+First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
 
-### KeyPoint Detector with MaskRCNN
   <p align="center">
     <img src="figs/pointnet.png" alt="animated" width=550 height=200 />
   </p>
@@ -31,7 +32,7 @@ Typically there are two way to solve this. One is to have two CNNs one for detec
     <img src="figs/RPN.png" alt="animated" width=450 height=200 />
   </p>
 
-The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
+* The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
 
 ### Proposed solution
 Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In this case n=2 for Neck and rating but in general can be N classification and N regression problems.
