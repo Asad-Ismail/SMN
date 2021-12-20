@@ -24,7 +24,7 @@ Typically there are two way to solve this. One is to have two CNNs one for detec
 
 ### KeyPoint Detector with MaskRCNN
   <p align="center">
-    <img src="figs/pointnet.png" alt="animated" width=500 height=500 />
+    <img src="figs/pointnet.png" alt="animated" width=500 height=300 />
   </p>
 
 In our example case N=2 for Neck and rating but in general can be N classification and N regression problems. The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
