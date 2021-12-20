@@ -13,7 +13,7 @@ We will motivate the problem by an example. Suppose we want to do vegetable phen
   </p>
 #### Example Annotated Image
   <p align="center">
-    <img src="figs/ann_img.png" alt="animated" width=700 height=500 />
+    <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
   </p>
 
 
