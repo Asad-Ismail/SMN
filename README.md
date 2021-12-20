@@ -25,6 +25,13 @@ Typically there are two way to solve this. One is to have two neworks one for de
 
 ### Proposed solution
 Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In this case n=2 for Neck and rating but in general can be N classification and N regression problems.
-A typical solution Netowrk will look like below
+A typical solution Network will look like below
+
+
+We can esasliy specify the classfication, regression and semgentation heads as required using config file as shown below
+  <p align="center">
+    <img src="figs/config.png" alt="animated" width=700 height=500 />
+  </p>
+
 
 
