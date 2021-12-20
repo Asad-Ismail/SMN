@@ -8,18 +8,6 @@ We will motivate the problem by an example. Suppose we want to do vegetable phen
 4) Head and Tail of fruits are used for orientation correction of fruit  they can be thpough of image keypoint detection (Keypoint detection)
 5) Neck and rating of fruit is determied by breeder and is given a categorical score form 1-5. where 1 is bad and 5 is good. They can be though of classification problem
 So we have object detection problem, instance segmtentation problem multiple multi class classification problems per objects and keypoint detection problem
-### Example Input Image
-  
-  <p align="center">
-    <img src="figs/img.png" alt="animated" width=700 height=500 />
-  </p>
-  
-### Example Annotated Image
-  <p align="center">
-    <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
-  </p>
-
-
 Typically there are two way to solve this.
 * MaskRCNN with Keypoint Detector + Seperate CNN for per fruit Classification/Regression
 First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
@@ -38,6 +26,22 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
 
 
 * The second way is multi task learning. We propose here a multitask network with configureable inputs and that can be exapnded to do N segmentaiton,N classification and N regression tasks where N can be specified by a config file
+
+<p align="center">
+    <img src="figs/SMN.png" alt="animated" width=650 height=200 />
+  </p>
+
+### Example Input Image
+  
+  <p align="center">
+    <img src="figs/img.png" alt="animated" width=700 height=500 />
+  </p>
+  
+### Example Annotated Image
+  <p align="center">
+    <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
+  </p>
+
 
 ### Proposed solution
 Typically there are two way to solve this. One is to have two neworks one for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another newotk for n way classification of that fruit. In this case n=2 for Neck and rating but in general can be N classification and N regression problems.
