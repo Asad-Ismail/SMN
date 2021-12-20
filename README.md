@@ -14,7 +14,7 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
   
   
   <p align="center">
-    <img src="figs/RPN.png" alt="animated" width=400 height=200 />
+    <img src="figs/RPN.png" alt="animated" width=500 height=150 />
   </p>
   
   <p align="center">
