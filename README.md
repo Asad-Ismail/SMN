@@ -24,7 +24,7 @@ Typically there are two way to solve this. One is to have two CNNs one for detec
 
 ### KeyPoint Detector with MaskRCNN
   <p align="center">
-    <img src="figs/pointnet.png" alt="animated" width=450 height=200 />
+    <img src="figs/pointnet.png" alt="animated" width=550 height=200 />
   </p>
   
   <p align="center">
