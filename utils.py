@@ -430,10 +430,10 @@ def write_text(image,text,point=(0,0),color=(255,0,0)):
     
 
 def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
-    vis_img = image.detach().numpy()
+    vis_img = (image.detach().numpy()*255).astype(np.uint8)
     vis_img=np.moveaxis(vis_img, 0, -1)
     vis_img=vis_img.copy()
-    class_color={i:[random.uniform(0,1) for _ in range(3)] for i in np.unique(classes)}
+    class_color={i:[random.uniform(0,255) for _ in range(3)] for i in np.unique(classes)}
     # offset for drawing text
     off_x=20
     off_y=50
@@ -478,8 +478,9 @@ def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
                         point=(bbox[0]+(bbox[2]-bbox[0])//2+j*off_x,bbox[1]+(bbox[3]-bbox[1])//2+j*off_y)
                         write_text(vis_img,f"{k}: {cl}",point=point,color=(0,0,255))
                 
-                    
+    #vis_img = cv2.normalize(vis_img*255, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)                 
     vis_img=resize_images_cv(vis_img)
+    cv2.imwrite("ann_input.png",vis_img)
     cv2.imshow("Input and labels", vis_img)
     cv2.waitKey(0)
 
