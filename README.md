@@ -56,7 +56,6 @@ In summary, we have object detection problem, multiple instance segmtentation pr
   </p>
 
 
-
 ### Proposed Framework
 In this framework we can specify all the tasks using a config file as shown below
 
@@ -64,5 +63,5 @@ In this framework we can specify all the tasks using a config file as shown belo
     <img src="figs/config.png" alt="animated" width=700 height=500 />
   </p>
 
-
+Quantitive results on each task for the private dataset to be released soon!!
 
