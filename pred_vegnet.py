@@ -1,23 +1,18 @@
 from torch.utils import data
 import torchvision.transforms as T
 import torch
-from utils.utils import  vis_gen
+from utils.utils import  vis_data
 from utils.data_loader import  VegDataset
 from utils.engine import train_one_epoch, evaluate
 import os
-import numpy as np
-import cv2
-from tqdm import tqdm
+import utils.detection_utils as detection_utils
 from model.vegnet_v1 import *
-from torch.utils.mobile_optimizer import optimize_for_mobile
 import yaml
-
 
 torch.backends.cudnn.benchmark=True
 
-
 #build model
-config_file="model_config_cuc.yaml"
+config_file="model_config.yaml"
 with open(config_file, "r") as yamlfile:
     config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
@@ -40,7 +35,7 @@ def vis_and_process_preds(image,prediction,dataset,test_th=0.3):
     image=image.cpu()
     label_map=[dataset.rev_class_map[i.item()] for i in classes]
     # visualize results
-    vis_gen(image,masks,boxes,keypoints,label_map, \
+    vis_data(image,masks,boxes,keypoints,label_map, \
         other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
         seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
         

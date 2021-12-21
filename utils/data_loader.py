@@ -5,13 +5,13 @@ import os
 import cv2
 from scipy.spatial import distance
 import json
-from utils import *
+from .utils import *
 from PIL import Image
 import yaml
 import torchvision.transforms as T
 
 
-config_file="model_config_cuc.yaml"
+config_file="model_config.yaml"
 with open(config_file, "r") as yamlfile:
     config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
@@ -259,7 +259,7 @@ class VegDataset(Dataset):
             image= self.transform(image)
         if self.vis:
             label_map=[self.rev_class_map[i.item()] for i in target["labels"]]
-            vis_gen(image,target["masks"],target["boxes"],target["keypoints"],label_map, \
+            vis_data(image,target["masks"],target["boxes"],target["keypoints"],label_map, \
                     other_masks={"backbone":target["backbone"]},clas={"neck":target["neck"],"rating":target["rating"]},\
                     seg_labels=self.segm_classes,clas_labels=self.class_classes,kp_labels=self.kp_classes)
         return image,target

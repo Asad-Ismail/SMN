@@ -435,9 +435,9 @@ def vis_data(image, masks, bboxs, keypoints,classes,**kwargs):
             if classes[i] in kwargs["kp_labels"]: 
                 keypoint = np.int0(keypoints[i].detach().numpy())
                 # Visualize Keypoints
-                cv2.circle(vis_img, (keypoint[0][0], keypoint[0][1]), 1, (0, 0, 255), 10)
+                cv2.circle(vis_img, (keypoint[0][0], keypoint[0][1]), 1, (0, 255, 255), 20)
                 write_text(vis_img,"Head",(keypoint[0][0]+off_x, keypoint[0][1]+off_y))
-                cv2.circle(vis_img, (keypoint[1][0], keypoint[1][1]), 1, (124, 0, 255), 10)
+                cv2.circle(vis_img, (keypoint[1][0], keypoint[1][1]), 1, (0, 255, 255), 20)
                 write_text(vis_img,"Tail",(keypoint[1][0]+off_x, keypoint[1][1]+off_y))
                     
         # visualize classification
@@ -449,8 +449,8 @@ def vis_data(image, masks, bboxs, keypoints,classes,**kwargs):
                         write_text(vis_img,f"{k}: {cl}",point=point,color=(0,0,255))
          
     vis_img=resize_images_cv(vis_img)
-    if kwargs["DEBUG"]:
-        cv2.imwrite("ann_input.png",vis_img)
+    #if"" kwargs["DEBUG"]:
+    cv2.imwrite("ann_input.png",vis_img)
     cv2.imshow("Input and labels", vis_img)
     cv2.waitKey(0)
 
