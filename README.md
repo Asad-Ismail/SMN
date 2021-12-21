@@ -5,7 +5,8 @@
 
 A Scaleable MultiTask Network Framework for image-based Object detection, Instance segmenation, Keypoint detection, Classification and Regression. We want to solve all the taks of OD, Instance segmentation, KP detection, Detected objects classifications and regressions. Typically there are two way to approach this.
 
-* Pipeiline of an Instance segmentation netowrk like MaskRCNN with Keypoint Detector followed by seperate CNNs for per fruit Classification/Regression 
+* Pipeiline of an Instance segmentation netowrk like MaskRCNN with Keypoint Detector followed by seperate CNNs for per fruit Classification/Regression
+ 
 First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
 
   <p align="center">
