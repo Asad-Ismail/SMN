@@ -85,7 +85,31 @@ class VegDataset(Dataset):
 
             if point[0][0]>= xmin and point[0][0]<= xmax and point[0][1]>= ymin and point[0][1]<= ymax:
                 return point
-        raise(f"No Class annotaiton found!!")
+        raise(f"No Class annotaiton found Not all classes are annotated for all fruits!!")
+
+    def find_segm(self,segtar,segm,clas):
+        # Find segm of clas in segtar 
+        anno=segtar["annotation"]
+        px = [x for x, y in anno]
+        py = [y for x, y in anno]
+        xtar_min=min(px)
+        xtar_max=max(px)
+        ytar_min=min(py)
+        ytar_max=max(py)
+        for s in segm:
+            # Target
+            if s["class_id"] in clas:
+                anno=s["annotation"]
+                px = [x for x, y in anno]
+                py = [y for x, y in anno]
+                xmin=min(px)
+                xmax=max(px)
+                ymin=min(py)
+                ymax=max(py)
+                mid_x=xmin+(xmax-xmin)/2
+                mid_y=ymin+(ymax-ymin)/2
+                if mid_x>= xtar_min and mid_x<= xtar_max and mid_y>= ytar_min and mid_y<= ytar_max:
+                    return anno
     
     
     def get_keypoints(self,kps,anno):
@@ -182,16 +206,19 @@ class VegDataset(Dataset):
                             all_classes[k].append(0)
                         else:
                             all_classes[k]=[0]
-        ## segmentations apart form object segmentation
-        for seg in segms:
-            if seg["class_id"] in self.segm_names[1:]:
-                anno=seg["annotation"]
-                mask_img = np.zeros((h, w), dtype=np.uint8)
-                cv2.drawContours(mask_img, np.int0([anno]), -1, 255, -1)
-                if seg["class_id"] in rem_segm:
-                    rem_segm[seg["class_id"]].append(mask_img)
-                else:
-                    rem_segm[seg["class_id"]]=[mask_img]
+                ## segmentations apart from masks segmentation
+                for i,k in enumerate(self.segm_names[1:],start=1):
+                    anno=self.find_segm(seg,segms,k)
+                    mask_img = np.zeros((h, w), dtype=np.uint8)
+                    #draw if anno is not None
+                    if anno:
+                        cv2.drawContours(mask_img, np.int0([anno]), -1, 255, -1)
+                    if k in rem_segm:
+                        rem_segm[k].append(mask_img)
+                    else:
+                        rem_segm[k]=[mask_img]
+                        
+
         # For target boxes, masks and labels should be there other are optionals
         boxes = torch.as_tensor(all_bbox, dtype=torch.float32)
         labels = torch.as_tensor(class_segm, dtype=torch.int64)
@@ -199,7 +226,6 @@ class VegDataset(Dataset):
         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
         keypoints=torch.as_tensor(all_kps,dtype=torch.float32)
         iscrowd = torch.zeros(labels.shape[0], dtype=torch.int64)
-        
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
@@ -209,11 +235,9 @@ class VegDataset(Dataset):
         # keypoints in order of Nxkx3
         target["keypoints"]=keypoints.reshape(len(all_kps),2,3)
         target["iscrowd"] = iscrowd
-        
         ## append rest of classifications
         for k,v in all_classes.items():
             target[k]=torch.as_tensor(v, dtype=torch.int64)
-        
         # append rest of segmentaitons
         for k,v in rem_segm.items():
             v=torch.as_tensor(v, dtype=torch.uint8)//255

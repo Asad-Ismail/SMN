@@ -18,7 +18,7 @@ class DiceBCELoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(DiceBCELoss, self).__init__()
 
-    def forward(self, inputs, targets, smooth=1):
+    def forward(self, inputs, targets, smooth=1,mask=None):
         
         #comment out if your model contains a sigmoid or equivalent activation layer
         inputs = F.sigmoid(inputs)       
@@ -96,21 +96,21 @@ def maskrcnn_inference(x, labels,valid_classes=None):
     # select masks corresponding to the predicted classes
     num_masks = x.shape[0]
     if valid_classes:
-    #if 0:
         class_map={i:k for i,k in zip(valid_classes,torch.arange(1,len(valid_classes)+1))}
-        valid_labels=[torch.tensor([l for l in label if l in valid_classes],device=label.device) for label in labels]
+        #valid_labels=[torch.tensor([l for l in label if l in valid_classes],device=label.device) for label in labels]
+        valid_labels=[torch.tensor([l for l in label],device=label.device) for label in labels]
         boxes_per_image = [label.shape[0] for label in valid_labels]
         labels = torch.cat(labels)
         valid_labels = torch.cat(valid_labels)
-        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=valid_labels.device) if labels[i] in valid_classes],dtype=torch.int64)
-        valid_labels=torch.tensor([class_map[l.item()] for l in valid_labels if l in valid_classes],device=valid_labels.device)
+        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=valid_labels.device)],dtype=torch.int64)
+        #valid_labels=torch.tensor([class_map[l.item()] for l in valid_labels if l in valid_classes],device=valid_labels.device)
+        valid_labels=torch.tensor([class_map[l.item()] if l.item() in class_map else 0 for l in valid_labels],device=valid_labels.device)
         mask_prob = mask_prob[valid_indices, valid_labels][:, None]
         mask_prob = mask_prob.split(boxes_per_image, dim=0)
     else:
         boxes_per_image = [label.shape[0] for label in labels]
         labels = torch.cat(labels)
         valid_indices = torch.arange(num_masks, device=labels.device)
-        #index = torch.arange(num_masks, device=labels.device)
         mask_prob = mask_prob[valid_indices, labels][:, None]
         mask_prob = mask_prob.split(boxes_per_image, dim=0)
         
@@ -135,9 +135,6 @@ def project_masks_on_boxes(gt_masks, boxes, matched_idxs, M):
     matched_idxs = matched_idxs.to(boxes)
     rois = torch.cat([matched_idxs[:, None], boxes], dim=1)
     gt_masks = gt_masks[:, None].to(rois)
-    torch.save(gt_masks,"gt_masks.pt")
-    torch.save(rois,"rois.pt")
-    torch.save(M,"m.pt")
     return roi_align(gt_masks, rois, (M, M), 1.)[:, 0]
 
 def get_class_targets(gt_class,matched_idxs):
@@ -162,37 +159,64 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
     #print([torch.nonzero(m).shape[0] for m in gt_masks[0]])
     discretization_size = mask_logits.shape[-1]
     labels = [gt_label[idxs] for gt_label, idxs in zip(gt_labels, mask_matched_idxs)]
-    mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
-    labels = torch.cat(labels, dim=0)
-    #if 0 in labels:
-    #    raise(f"Got 0 in labels so check the other mask calculations!!!!!!!!")
-    mask_targets = torch.cat(mask_targets, dim=0)
+    #mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
+    #labels = torch.cat(labels, dim=0)
+    #mask_targets = torch.cat(mask_targets, dim=0)
     # torch.mean (in binary_cross_entropy_with_logits) doesn't
     # accept empty tensors, so handle it separately
-    if mask_targets.numel() == 0:
-        print(f"Encountered 0 labels in proposal!!!!!!!!!!!!!!!")
-        return mask_logits.sum() * 0
+    #if mask_targets.numel() == 0:
+    #    print(f"Encountered 0 labels in proposal!!!!!!!!!!!!!!!")
+    #    return mask_logits.sum() * 0
     if valid_classes:
-        #print(f"Mask Loss for backbone class!!!!!!!!")
+        #mask_index=[torch.tensor([True if l in valid_classes else False for l in in_labels],device=mask_logits.device) for in_labels in labels]
+        #assert len(mask_index)==len(mask_matched_idxs)
+        #mask_matched_idxs= [in_mask_matched_idxs[mask_index[i]] for i,in_mask_matched_idxs in enumerate(mask_matched_idxs)]
+        #proposals=[in_proposals[mask_index[i]] for i,in_proposals in enumerate(proposals)]
+
+        #print(f"Non Zero elements of original target are")
+        #print([torch.nonzero(m).shape[0] for m in gt_masks[0]])
+        #print(f"Shape Min Max matched indexes are {mask_matched_idxs[0].shape}, {mask_matched_idxs[0].min()}, {mask_matched_idxs[0].max()}")
+        #print(f"Proposal shape is {proposals[0].shape[0]}")
+        #print(f"GT masks shape is {gt_masks[0].shape[0]}")
+        mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
+        labels = torch.cat(labels, dim=0)
+        mask_targets = torch.cat(mask_targets, dim=0)
         # Convert from classes index from original to mask classes
         class_map={i:k.item() for i,k in zip(valid_classes,torch.arange(1,len(valid_classes)+1))}
         valid_indices=[i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes]
         valid_indices=torch.tensor(valid_indices,dtype=torch.int64)
         valid_labels=torch.tensor([class_map[l.item()] for l in labels if l in valid_classes],device=labels.device)
+        #print(f"Non Zero elements of targets ROI are")
+        #print([torch.nonzero(m).shape[0] for m in mask_targets])
         mask_targets=mask_targets[valid_indices]
+        #print(f"Non Zero elements of targets2 are")
+        #print([torch.nonzero(m).shape[0] for m in mask_targets])
     else:
         #print(f"Mask Loss for original class!!!!!!!!")
+        #print(f"Non Zero elements of original target are")
+        #print([torch.nonzero(m).shape[0] for m in gt_masks[0]])
+        #print(f"Shape and Min Max matched indexes are {mask_matched_idxs[0].shape}, {mask_matched_idxs[0].min()}, {mask_matched_idxs[0].max()}")
+        #print(f"Proposal shape is {proposals[0].shape[0]}")
+        #print(f"GT masks shape is {gt_masks[0].shape[0]}")
+        mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
+        labels = torch.cat(labels, dim=0)
+        mask_targets = torch.cat(mask_targets, dim=0)
         valid_indices=torch.arange(labels.shape[0], device=labels.device)
+        #mask=torch.tensor([True for _  in torch.arange(labels.shape[0])], device=labels.device)
         valid_labels=labels
+        #print(f"Non Zero elements of targets ROI are")
+        #print([torch.nonzero(m).shape[0] for m in mask_targets])
         #inputs= mask_logits[torch.arange(labels.shape[0], device=labels.device), labels]
     inputs= mask_logits[valid_indices, valid_labels]
     #print(f"Non Zero elements of targets2 are")
     #print([torch.nonzero(m).shape[0] for m in mask_targets])
     if maskloss is not None:
         #combine both cross entropy and dice loss
-        mask_loss=maskloss(inputs,mask_targets)+F.binary_cross_entropy_with_logits(inputs, mask_targets)
+        mask_loss=maskloss(inputs,mask_targets)
     else:
         mask_loss = F.binary_cross_entropy_with_logits(inputs, mask_targets)
+        #mask_loss = F.binary_cross_entropy_with_logits(inputs, mask_targets,reduction="none").mean(dim=[-2,-1])*mask.float()
+        #mask_loss=mask_loss.sum()/mask.float().sum()
     return mask_loss
 
 
@@ -251,11 +275,12 @@ def headclass_inference(x, labels,valid_classes=None):
     class_prob = x.softmax(dim=-1)
     #if 0:
     if valid_classes:
-        valid_labels=[torch.tensor([l for l in label if l in valid_classes],device=label.device) for label in labels]
+        valid_labels=[torch.tensor([l for l in label],device=label.device) for label in labels]
         boxes_per_image = [label.shape[0] for label in valid_labels]
         #valid_labels = torch.cat(valid_labels)
         labels=torch.cat(labels)
-        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes],dtype=torch.int64)
+        #valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes],dtype=torch.int64)
+        valid_indices=torch.tensor([i for i in torch.arange(labels.shape[0], device=labels.device)],dtype=torch.int64)
         class_prob = class_prob[valid_indices]
         class_prob = torch.argmax(class_prob,dim=-1)
         class_prob = class_prob.split(boxes_per_image, dim=0)
@@ -707,8 +732,8 @@ class RoIHeads(nn.Module):
         self.reg_names=reg_names
         self.reg_labels=reg_labels
         ##Better MaskLoss
-        self.maskloss=DiceBCELoss() 
-        #self.maskloss=None
+        #self.maskloss=DiceBCELoss() 
+        self.maskloss=None
         
 
     def has_mask(self):

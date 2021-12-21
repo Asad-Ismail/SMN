@@ -211,7 +211,7 @@ class Vegnet(FasterRCNN):
             valid_segm_classes=[]
             for i,name in enumerate(segm_names):
                 #maskroi pool
-                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=28, sampling_ratio=2)
+                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=32, sampling_ratio=2)
                 mask_roi_pool.append(mask_roi_pool_tmp)
                 #maskroi heads
                 mask_layers = (256, 256, 256, 256)

@@ -387,31 +387,6 @@ def resize_images_cv(img):
     resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
     return resized
 
-def vis_dataset(image, masks, bboxs, keypoints, label="",box_format="yx",back_masks=None):
-    vis_img = image.copy()
-    if back_masks is not None:
-        assert back_masks.shape[-1]==masks.shape[-1]
-    for i in range(masks.shape[-1]):
-        mask = masks[...,i]
-        bbox = bboxs[i]
-        indicies = np.where(mask != 0)
-        vis_mask(vis_img,indicies=indicies)
-        if back_masks is not None:
-            b_mask = back_masks[...,i]
-            indicies = np.where(b_mask != 0)
-            vis_mask(vis_img,indicies=indicies,color=(0,0,255))
-        keypoint = keypoints[i]
-        # Visualize Keypoints
-        cv2.circle(vis_img, (keypoint[0][0], keypoint[0][1]), 1, (0, 0, 255), 10)
-        cv2.circle(vis_img, (keypoint[1][0], keypoint[1][1]), 1, (124, 0, 255), 10)
-        # Visualize bounding box
-        if box_format=="xy":
-            cv2.rectangle(vis_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 255, 0), 2)
-        else:    
-            cv2.rectangle(vis_img, (bbox[1], bbox[0]), (bbox[3], bbox[2]), (255, 255, 0), 2)
-    cv2.imshow(label, vis_img)
-    cv2.waitKey(0)
-
 
 def write_text(image,text,point=(0,0),color=(255,0,0)):
     # font
@@ -429,7 +404,7 @@ def write_text(image,text,point=(0,0),color=(255,0,0)):
     return image
     
 
-def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
+def vis_data(image, masks, bboxs, keypoints,classes,**kwargs):
     vis_img = (image.detach().numpy()*255).astype(np.uint8)
     vis_img=np.moveaxis(vis_img, 0, -1)
     vis_img=vis_img.copy()
@@ -437,11 +412,6 @@ def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
     # offset for drawing text
     off_x=20
     off_y=50
-    # seperate indexes for labels with differnet shapes
-    other_mask_id=0
-    # donot need seperate index for kp since kp size and class id is equal to mask size with visible tunred off for classes not compatible
-    kp_id=0
-    class_id=0
     for i in range(masks.shape[0]):
         mask = masks[i][...,None].detach().numpy()
         bbox = np.int0(bboxs[i].detach().numpy().copy())
@@ -455,10 +425,10 @@ def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
         if "other_masks" in kwargs and "seg_labels" in kwargs:
             for j,k in enumerate(kwargs["other_masks"].keys(),start=1):
                 if classes[i] in kwargs["seg_labels"][j]: 
-                    m=kwargs["other_masks"][k][other_mask_id][...,None].detach().numpy()
+                    m=kwargs["other_masks"][k][i][...,None].detach().numpy()
                     indicies = np.where(m >= 0.1)
                     vis_mask(vis_img,indicies=indicies,color=(0,0,255))
-                    other_mask_id+=1
+                    #other_mask_id+=1
                     
         ## Visualize keypoints
         if "kp_labels" in kwargs:
@@ -477,10 +447,10 @@ def vis_gen(image, masks, bboxs, keypoints,classes,**kwargs):
                         cl=kwargs["clas"][k][i].cpu().item()
                         point=(bbox[0]+(bbox[2]-bbox[0])//2+j*off_x,bbox[1]+(bbox[3]-bbox[1])//2+j*off_y)
                         write_text(vis_img,f"{k}: {cl}",point=point,color=(0,0,255))
-                
-    #vis_img = cv2.normalize(vis_img*255, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)                 
+         
     vis_img=resize_images_cv(vis_img)
-    cv2.imwrite("ann_input.png",vis_img)
+    if kwargs["DEBUG"]:
+        cv2.imwrite("ann_input.png",vis_img)
     cv2.imshow("Input and labels", vis_img)
     cv2.waitKey(0)
 

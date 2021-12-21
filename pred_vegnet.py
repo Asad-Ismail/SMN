@@ -1,12 +1,15 @@
+from torch.utils import data
 import torchvision.transforms as T
 import torch
 from utils.utils import  vis_gen
 from utils.data_loader import  VegDataset
 from utils.engine import train_one_epoch, evaluate
 import os
+import numpy as np
+import cv2
 from tqdm import tqdm
 from model.vegnet_v1 import *
-import utils.detection_utils as detection_utils
+from torch.utils.mobile_optimizer import optimize_for_mobile
 import yaml
 
 
@@ -36,7 +39,7 @@ def vis_and_process_preds(image,prediction,dataset,test_th=0.3):
     neck=prediction["neck"][valid_scores].cpu()
     image=image.cpu()
     label_map=[dataset.rev_class_map[i.item()] for i in classes]
-    
+    # visualize results
     vis_gen(image,masks,boxes,keypoints,label_map, \
         other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
         seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
@@ -49,66 +52,21 @@ def build_model(config):
                                 class_classes=config["classification"]["classes"],reg_names=config["regression"]["name"],reg_labels=config["regression"]["name"])
     return model
  
- 
+
 root_dir="data/cucumber"
 dataset=VegDataset(root_dir, transform=get_transform())
 model=build_model(config)    
-
+# read and build dataset loader
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True,collate_fn=detection_utils.collate_fn)
-
-
 model=build_model(config)
-
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 #device=torch.device("cpu")
 model.to(device)
-
-pretrain= None
-if pretrain:
-    print(f"loading pretrained !!!!")
-    state_dict=torch.load(pretrain)
-    model.load_state_dict(state_dict=state_dict,strict=False)
-
-
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True,collate_fn=detection_utils.collate_fn)
-# construct an optimizer
-params = [p for p in model.parameters() if p.requires_grad]
-optimizer = torch.optim.SGD(params, lr=0.001,
-                            momentum=0.9, weight_decay=0.0005)
-# and a learning rate scheduler
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                step_size=1000,
-                                                gamma=0.1)
-
-# let's train it for 10 epochs
-num_epochs = 10000+1
-
-for epoch in tqdm(range(num_epochs+2)):
-    # train for one epoch, printing every 10 iterations
-    train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-    
-    # update the learning rate
-    lr_scheduler.step()
-    # evaluate on the test dataset
-    #evaluate(model, data_loader_test, device=device)
-    if epoch%5000==0:
-        PATH="mask_backbone_keypoint__rating_weights"
-        os.makedirs(PATH,exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(PATH,f"{epoch}_epoch_weights"))
-            
-
-else:
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
-    for i,(images,data) in enumerate(data_loader):
-    #images,targets = next(iter(data_loader))
-        #if i<1:
-        #    continue
-        images = list(image.to(device) for image in images)
-        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","10000_epoch_weights")))
-        #model.load_state_dict(torch.load("/home/asad/projs/vegNetPytorch/mask_keypoint_weights/950_epoch_weights"))
-        model.eval()
-        predictions = model(images)   
-        prediction=predictions[0]
-        vis_and_process_preds(images[0],prediction,dataset)
-
+data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
+for i,(images,data) in enumerate(data_loader):
+    images = list(image.to(device) for image in images)
+    model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","10000_epoch_weights")))
+    model.eval()
+    predictions = model(images)   
+    prediction=predictions[0]
+    vis_and_process_preds(images[0],prediction,dataset)
