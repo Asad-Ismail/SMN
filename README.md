@@ -7,7 +7,7 @@ A Scaleable MultiTask Network Framework for image-based Object detection, Instan
 
 * Pipeiline of an Instance segmentation netowrk like MaskRCNN with Keypoint Detector followed by seperate CNNs for per fruit Classification/Regression
  
-First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. In our example case N=2 for Neck and rating but in general can be N classification and N regression problems.
+First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. Figures below show this pipeline
 
   <p align="center">
     <img src="figs/pointnet.png" alt="animated" width=650 height=300 />
