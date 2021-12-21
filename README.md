@@ -10,7 +10,7 @@ A Scaleable MultiTask Network Framework for image-based Object detection, Instan
 First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. Figures below show this pipeline
 
   <p align="center">
-    <img src="figs/pointnet.png" alt="animated" width=650 height=300 />
+    <img src="figs/masrcnn.png" alt="animated" width=650 height=300 />
   </p>
   
   
@@ -19,7 +19,7 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
   </p>
   
   <p align="center">
-    <img src="figs/resnet34_2.png" alt="animated" width=650 height=200 />
+    <img src="figs/resnet34.png" alt="animated" width=650 height=200 />
   </p>
 
 
@@ -48,6 +48,13 @@ In summary, we have object detection problem, multiple instance segmtentation pr
   <p align="center">
     <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
   </p>
+  
+### Prediction Results using multitask network
+
+  <p align="center">
+    <img src="figs/pred.png" alt="animated" width=700 height=500 />
+  </p>
+
 
 
 ### Proposed Framework
