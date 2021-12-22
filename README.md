@@ -56,12 +56,15 @@ In summary, we have object detection problem, multiple instance segmtentation pr
   </p>
 
 
-### Proposed Framework
-In this framework we can specify all the tasks using a config file as shown below
+### Training and Predict
 
+1) Install requirements using pip install -r requirements.txt
+2) In this framework we can specify all the tasks using a config file as shown below.Modify the config file according to the task
   <p align="center">
     <img src="figs/config.png" alt="animated" width=700 height=500 />
   </p>
+3) To train the netowrk run train_vegnet.py.
+4) To predcit run predict_vegnet.py 
 
 Quantitive results on each task for the private dataset to be released soon!!
 
