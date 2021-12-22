@@ -2,6 +2,5 @@
 *.pt
 *__pycache__/
 *.vscode/
-*data/
-mask_backbone_keypoint__rating_weights/
+*weights/
 

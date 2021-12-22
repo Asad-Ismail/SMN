@@ -113,6 +113,7 @@ def maskrcnn_inference(x, labels,valid_classes=None):
         valid_indices = torch.arange(num_masks, device=labels.device)
         mask_prob = mask_prob[valid_indices, labels][:, None]
         mask_prob = mask_prob.split(boxes_per_image, dim=0)
+        
     return mask_prob
 
 
@@ -148,24 +149,28 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
     Return:
         mask_loss (Tensor): scalar tensor containing the loss
     """
+    #print(f"Non Zero elements of target masks are")
+    #print([torch.nonzero(m).shape[0] for m in gt_masks[0]])
     discretization_size = mask_logits.shape[-1]
     labels = [gt_label[idxs] for gt_label, idxs in zip(gt_labels, mask_matched_idxs)]
     mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
+    labels = torch.cat(labels, dim=0)
+    mask_targets = torch.cat(mask_targets, dim=0)
+    # torch.mean (in binary_cross_entropy_with_logits) doesn't
+    # accept empty tensors, so handle it separately
     if mask_targets.numel() == 0:
         return mask_logits.sum() * 0
-    if valid_classes:  
-        labels = torch.cat(labels, dim=0)
-        mask_targets = torch.cat(mask_targets, dim=0)
+    if valid_classes:
         # Convert from classes index from original to mask classes
         class_map={i:k.item() for i,k in zip(valid_classes,torch.arange(1,len(valid_classes)+1))}
         valid_indices=[i for i in torch.arange(labels.shape[0], device=labels.device) if labels[i] in valid_classes]
         valid_indices=torch.tensor(valid_indices,dtype=torch.int64)
         valid_labels=torch.tensor([class_map[l.item()] for l in labels if l in valid_classes],device=labels.device)
         mask_targets=mask_targets[valid_indices]
+
     else:
-        labels = torch.cat(labels, dim=0)
-        mask_targets = torch.cat(mask_targets, dim=0)
         valid_indices=torch.arange(labels.shape[0], device=labels.device)
+        #mask=torch.tensor([True for _  in torch.arange(labels.shape[0])], device=labels.device)
         valid_labels=labels
     inputs= mask_logits[valid_indices, valid_labels]
     if maskloss is not None:

@@ -8,11 +8,17 @@ import os
 import utils.detection_utils as detection_utils
 from model.vegnet_v1 import *
 import yaml
+import argparse
 
-torch.backends.cudnn.benchmark=True
+argp=argparse.ArgumentParser()
+argp.add_argument("--use-cudnn",type=bool,default=True)
+argp.add_argument("--config",type=str,default="model_config.yaml",help="Model Configuration")
+argp.add_argument("--data-dir",type=str,default="data/cucumber",help="Data Directory")
+args=argp.parse_args()
+torch.backends.cudnn.benchmark=args.use_cudnn
 
-#build model
-config_file="model_config.yaml"
+#build config
+config_file=args.config
 with open(config_file, "r") as yamlfile:
     config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
@@ -47,21 +53,21 @@ def build_model(config):
                                 class_classes=config["classification"]["classes"],reg_names=config["regression"]["name"],reg_labels=config["regression"]["name"])
     return model
  
-
-root_dir="data/cucumber"
-dataset=VegDataset(root_dir, transform=get_transform())
-model=build_model(config)    
-# read and build dataset loader
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True,collate_fn=detection_utils.collate_fn)
-model=build_model(config)
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-#device=torch.device("cpu")
-model.to(device)
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
-for i,(images,data) in enumerate(data_loader):
-    images = list(image.to(device) for image in images)
-    model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","10000_epoch_weights")))
-    model.eval()
-    predictions = model(images)   
-    prediction=predictions[0]
-    vis_and_process_preds(images[0],prediction,dataset)
+if __name__=="__main__":
+    data_dir=args.data_dir
+    dataset=VegDataset(data_dir, transform=get_transform())
+    model=build_model(config)    
+    # read and build dataset loader
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True,collate_fn=detection_utils.collate_fn)
+    model=build_model(config)
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    #device=torch.device("cpu")
+    model.to(device)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
+    for i,(images,data) in enumerate(data_loader):
+        images = list(image.to(device) for image in images)
+        model.load_state_dict(torch.load(os.path.join("mask_backbone_keypoint__rating_weights","10000_epoch_weights")))
+        model.eval()
+        predictions = model(images)   
+        prediction=predictions[0]
+        vis_and_process_preds(images[0],prediction,dataset)

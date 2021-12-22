@@ -4,8 +4,9 @@ from torch.utils.data import Dataset
 import os
 import cv2
 from scipy.spatial import distance
-import json
-from .utils import *
+import sys
+sys.path.append("utils/")
+from utils.utils import *
 from PIL import Image
 import yaml
 import torchvision.transforms as T
