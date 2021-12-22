@@ -56,7 +56,7 @@ In summary, we have object detection problem, multiple instance segmtentation pr
   </p>
 
 
-### Training and Predict
+### Training and Predictions
 
 1) Install requirements using pip install -r requirements.txt
 2) In this framework we can specify all the tasks using a config file as shown below.Modify the config file according to the task
@@ -66,5 +66,5 @@ In summary, we have object detection problem, multiple instance segmtentation pr
 3) To train the netowrk run train_vegnet.py.
 4) To predcit run predict_vegnet.py 
 
-Quantitive results on each task for the private dataset to be released soon!!
+## Quantitive results on each task for the private dataset to be released soon!!
 
