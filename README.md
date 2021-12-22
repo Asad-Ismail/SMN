@@ -66,5 +66,5 @@ In summary, we have object detection problem, multiple instance segmtentation pr
 3) To train the netowrk run train_vegnet.py.
 4) To predcit run predict_vegnet.py 
 
-## Quantitive results on each task for the private dataset to be released soon!!
+***Quantitive results on each task for the private dataset to be released soon!!***
 
