@@ -63,7 +63,7 @@ In summary, we have object detection problem, multiple instance segmtentation pr
   <p align="center">
     <img src="figs/config.png" alt="animated" width=700 height=500 />
   </p>
-3) To train the netowrk run train_vegnet.py.
+3) To train the netowrk run train_vegnet.py.\
 4) To predcit run predict_vegnet.py 
 
 ***Quantitive results on each task for the private dataset to be released soon!!***
