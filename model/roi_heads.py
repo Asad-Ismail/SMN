@@ -149,8 +149,6 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
     Return:
         mask_loss (Tensor): scalar tensor containing the loss
     """
-    #print(f"Non Zero elements of target masks are")
-    #print([torch.nonzero(m).shape[0] for m in gt_masks[0]])
     discretization_size = mask_logits.shape[-1]
     labels = [gt_label[idxs] for gt_label, idxs in zip(gt_labels, mask_matched_idxs)]
     mask_targets = [project_masks_on_boxes(m, p, i, discretization_size) for m, p, i in zip(gt_masks, proposals, mask_matched_idxs)]
@@ -173,11 +171,12 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
         #mask=torch.tensor([True for _  in torch.arange(labels.shape[0])], device=labels.device)
         valid_labels=labels
     inputs= mask_logits[valid_indices, valid_labels]
+    
     if maskloss is not None:
         #combine both cross entropy and dice loss
         mask_loss=maskloss(inputs,mask_targets)
     else:
-        mask_loss = F.binary_cross_entropy_with_logits(inputs, mask_targets)
+        mask_loss = F.binary_cross_entropy_with_logits(inputs, mask_targets,reduction="mean")
     return mask_loss
 
 
@@ -383,8 +382,7 @@ def heatmaps_to_keypoints(maps, rois):
         roi_map_height = int(heights_ceil[i].item())
         width_correction = widths[i] / roi_map_width
         height_correction = heights[i] / roi_map_height
-        roi_map = F.interpolate(
-            maps[i][:, None], size=(roi_map_height, roi_map_width), mode='bicubic', align_corners=False)[:, 0]
+        roi_map = F.interpolate(maps[i][:, None], size=(roi_map_height, roi_map_width), mode='bicubic', align_corners=False)[:, 0]
         # roi_map_probs = scores_to_probs(roi_map.copy())
         w = roi_map.shape[2]
         pos = roi_map.reshape(num_keypoints, -1).argmax(dim=1)
@@ -526,9 +524,7 @@ def paste_mask_in_image(mask, box, im_h, im_w):
     y_0 = max(box[1], 0)
     y_1 = min(box[3] + 1, im_h)
 
-    im_mask[y_0:y_1, x_0:x_1] = mask[
-        (y_0 - box[1]):(y_1 - box[1]), (x_0 - box[0]):(x_1 - box[0])
-    ]
+    im_mask[y_0:y_1, x_0:x_1] = mask[(y_0 - box[1]):(y_1 - box[1]), (x_0 - box[0]):(x_1 - box[0])]
     return im_mask
 
 
@@ -957,7 +953,8 @@ class RoIHeads(nn.Module):
                 assert len(self.mask_roi_pool)==len(self.mask_head)==len(self.mask_predictor),"Masks pool, head and predictor are not equal"
                 # For multi masks tasks loop
                 mask_logits=[]
-                for i in range(len(self.mask_roi_pool)):
+                for i in self.mask_roi_pool.keys():
+                #for i in range(len(self.mask_roi_pool)):
                     mask_features = self.mask_roi_pool[i](features, mask_proposals, image_shapes)
                     mask_features = self.mask_head[i](mask_features)
                     mask_logits.append(self.mask_predictor[i](mask_features))
@@ -1059,7 +1056,8 @@ class RoIHeads(nn.Module):
                 assert len(self.class_roi_pool)==len(self.class_head)==len(self.class_predictor),"Masks pool, head and predictor are not equal"
                 # For multi masks tasks loop
                 class_logits=[]
-                for i in range(len(self.class_roi_pool)):
+                for i in self.class_roi_pool.keys():
+                #for i in range(len(self.class_roi_pool)):
                     class_features = self.class_roi_pool[i](features, class_proposals, image_shapes)
                     class_features = self.class_head[i](class_features)
                     class_logits.append(self.class_predictor[i](class_features))

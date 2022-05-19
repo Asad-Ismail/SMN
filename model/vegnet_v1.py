@@ -205,29 +205,32 @@ class Vegnet(FasterRCNN):
         
         if segm_names:
             # Mask Detection stuff
-            mask_roi_pool=nn.ModuleList()
-            mask_head=nn.ModuleList()
-            mask_predictor=nn.ModuleList()
+            mask_roi_pool=nn.ModuleDict()
+            mask_head=nn.ModuleDict()
+            mask_predictor=nn.ModuleDict()
             valid_segm_classes=[]
             for i,name in enumerate(segm_names):
                 #maskroi pool
-                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=32, sampling_ratio=2)
-                mask_roi_pool.append(mask_roi_pool_tmp)
+                mask_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=28, sampling_ratio=2)
+                #mask_roi_pool.append(mask_roi_pool_tmp)
+                mask_roi_pool[name]=mask_roi_pool_tmp
                 #maskroi heads
                 mask_layers = (256, 256, 256, 256)
                 mask_dilation = 1
                 mask_head_tmp = MaskRCNNHeads(out_channels, mask_layers, mask_dilation,i)
-                mask_head.append(mask_head_tmp)
+                #mask_head.append(mask_head_tmp)
+                mask_head[name]=mask_head_tmp
                 #maskroi predictor
                 mask_predictor_in_channels = 256  # == mask_layers[-1]
                 mask_dim_reduced = 256
                 mask_predictor_tmp = MaskRCNNPredictor(mask_predictor_in_channels, mask_dim_reduced, num_classes=len(segm_classes[i])+1,index=i)
-                mask_predictor.append(mask_predictor_tmp)
+                #mask_predictor.append(mask_predictor_tmp)
+                mask_predictor[name]=mask_predictor_tmp
                 # Find the index of valid classes like some 
                 v_index=[j for j, e in enumerate(class_map,start=1) if e in segm_classes[i]]
                 valid_segm_classes.append(v_index)
         
-        if kp_name:
+        if kp_name and kp_name!="None":
             ## Keypoint Detection stuff
             if keypoint_roi_pool is None:
                 keypoint_roi_pool = MultiScaleRoIAlign(featmap_names=['0', '1', '2', '3'],output_size=14,sampling_ratio=2)
@@ -240,26 +243,29 @@ class Vegnet(FasterRCNN):
                 keypoint_dim_reduced = 512  # == keypoint_layers[-1]
                 keypoint_predictor = KeypointRCNNPredictor(keypoint_dim_reduced, num_keypoints)
         
-        if class_names:
-            class_roi_pool=nn.ModuleList()
-            class_head=nn.ModuleList()
-            class_predictor=nn.ModuleList()
+        if class_names and class_names!="None":
+            class_roi_pool=nn.ModuleDict()
+            class_head=nn.ModuleDict()
+            class_predictor=nn.ModuleDict()
             valid_class_classes=[]
             for i,name in enumerate(class_names):
                 #classroi pool
                 class_roi_pool_tmp = MultiScaleRoIAlign(featmap_names=["0", "1", "2", "3"], output_size=14, sampling_ratio=2)
-                class_roi_pool.append(class_roi_pool_tmp)
+                #class_roi_pool.append(class_roi_pool_tmp)
+                class_roi_pool[name]=class_roi_pool_tmp
                 #classroi heads
                 class_layers = (256, 256, 256, 256)
                 class_dilation = 1
                 class_head_tmp = ClassRCNNHeads(out_channels, class_layers, class_dilation,i)
-                class_head.append(class_head_tmp)
+                #class_head.append(class_head_tmp)
+                class_head[name]=class_head_tmp
                 #classroi predictor
                 class_predictor_in_channels = 256  # == mask_layers[-1]
                 class_dim_reduced = 256
                 # num classes+1 to add background class also used for unknown class
                 class_predictor_tmp = ClassRCNNPredictor(class_predictor_in_channels, class_dim_reduced, class_numclass[i]+1,i)
-                class_predictor.append(class_predictor_tmp)
+                #class_predictor.append(class_predictor_tmp)
+                class_predictor[name]=class_predictor_tmp
                 # Find the index of valid classes like some 
                 v_index=[j for j, e in enumerate(class_map,start=1) if e in class_classes[i]]
                 valid_class_classes.append(v_index)
@@ -289,21 +295,29 @@ class Vegnet(FasterRCNN):
             class_names=class_names,class_labels=class_labels,
             reg_names=reg_names,reg_labels=reg_labels
             )
-
-        self.roi_heads.keypoint_roi_pool = keypoint_roi_pool
-        self.roi_heads.keypoint_head = keypoint_head
-        self.roi_heads.keypoint_predictor = keypoint_predictor
         
+        if kp_name:
+            self.roi_heads.keypoint_roi_pool = keypoint_roi_pool
+            self.roi_heads.keypoint_head = keypoint_head
+            self.roi_heads.keypoint_predictor = keypoint_predictor
         
         self.roi_heads.mask_roi_pool = mask_roi_pool
         self.roi_heads.mask_head = mask_head
         self.roi_heads.mask_predictor =mask_predictor
         self.roi_heads.mask_valid_classes = valid_segm_classes
         
-        self.roi_heads.class_roi_pool = class_roi_pool
-        self.roi_heads.class_head = class_head
-        self.roi_heads.class_predictor = class_predictor
-        self.roi_heads.class_valid_classes = valid_class_classes
+        if class_names and class_names!="None":
+            self.roi_heads.class_roi_pool = class_roi_pool
+            self.roi_heads.class_head = class_head
+            self.roi_heads.class_predictor = class_predictor
+            self.roi_heads.class_valid_classes = valid_class_classes
+        
+        ### add names of all the classes for freezing and loss zeroing. Could be done better by integrating names in the original names list
+        ## available for each task in ROI heads
+        self.roi_heads.roi_head_names=[]
+        for n,m in self.roi_heads.named_modules():
+            if n:
+                self.roi_heads.roi_head_names.append(n)
 
 
 
@@ -337,15 +351,18 @@ class MaskRCNNPredictor(nn.Sequential):
     def __init__(self, in_channels, dim_reduced, num_classes,index):
         # index is to index the segmentation Predictor
         super().__init__(
-            OrderedDict(
-                [
-                    (f"conv5_mask_{index}", nn.ConvTranspose2d(in_channels, dim_reduced, 2, 2, 0)),
-                    (f"relu_{index}", nn.ReLU(inplace=True)),
-                    (f"mask_fcn_logits_{index}", nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)),
-                ]
+                OrderedDict(
+                    [
+                        (f"conv5_mask_{index}", nn.ConvTranspose2d(in_channels, dim_reduced, 2, 2, 0)),
+                        (f"relu_{index}", nn.ReLU(inplace=True)),
+                        ## additional masks 
+                        #(f"conv6_mask_{index}", nn.ConvTranspose2d(dim_reduced, dim_reduced, 2, 2, 0)),
+                        #(f"relu_6_{index}", nn.ReLU(inplace=True)),
+                    
+                        (f"mask_fcn_logits_{index}", nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)),
+                    ]
+                )
             )
-        )
-
         for name, param in self.named_parameters():
             if "weight" in name:
                 nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")

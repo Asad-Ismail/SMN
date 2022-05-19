@@ -3,6 +3,7 @@ Implements the Generalized R-CNN framework
 """
 
 from collections import OrderedDict
+from sqlalchemy import false
 import torch
 from torch import nn, Tensor
 import warnings
@@ -38,13 +39,15 @@ class GeneralizedRCNN(nn.Module):
             return losses
 
         return detections
+    
 
-    def forward(self, images, targets=None):
-        # type: (List[Tensor], Optional[List[Dict[str, Tensor]]]) -> Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]
+    def forward(self, images, targets=None, valid_tasks=None):
+        # type: (List[Tensor], Optional[List[Dict[str, Tensor]]], Optional[List[Dict[str, bool]]]) -> Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]
         """
         Args:
             images (list[Tensor]): images to be processed
             targets (list[Dict[Tensor]]): ground-truth boxes present in the image (optional)
+            valid_tasks (list[Dict[string]]): Valid tasks for multi task learning
 
         Returns:
             result (list[BoxList] or dict[Tensor]): the output from the model.
@@ -94,12 +97,17 @@ class GeneralizedRCNN(nn.Module):
         if isinstance(features, torch.Tensor):
             features = OrderedDict([('0', features)])
         proposals, proposal_losses = self.rpn(images, features, targets)
+        
+            
+        
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
         detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)
 
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)
+        
+        
         if torch.jit.is_scripting():
             if not self._has_warned:
                 warnings.warn("RCNN always returns a (Losses, Detections) tuple in scripting")

@@ -5,8 +5,9 @@ import os
 import cv2
 from scipy.spatial import distance
 import sys
-sys.path.append("utils/")
-from utils.utils import *
+#sys.path.append("utils/")
+#from utils.utils import *
+from utils import *
 from PIL import Image
 import yaml
 import torchvision.transforms as T

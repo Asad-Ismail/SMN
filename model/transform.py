@@ -47,6 +47,7 @@ def _resize_image_and_masks(image: Tensor, self_min_size: float, self_max_size: 
         else:
             scale_factor = scale.item()
         recompute_scale_factor = True
+        #recompute_scale_factor = False
 
     image = torch.nn.functional.interpolate(image[None], size=size, scale_factor=scale_factor, mode='bilinear',
                                             recompute_scale_factor=recompute_scale_factor, align_corners=False)[0]
