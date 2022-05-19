@@ -80,6 +80,8 @@ def freeze_multitask(model,valid_tasks):
     if valid_tasks:
         for k,v in valid_tasks.items():
             if (k=="detection"):
+                # Bckbone is only trained for detection
+                model.backbone.requires_grad_(requires_grad=v)
                 model.rpn.requires_grad_(requires_grad=v)
                 model.roi_heads.box_roi_pool.requires_grad_(requires_grad=v)
                 model.roi_heads.box_head.requires_grad_(requires_grad=v)
