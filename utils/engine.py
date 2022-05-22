@@ -10,7 +10,7 @@ from .coco_eval import CocoEvaluator
 from .coco_utils import get_coco_api_from_dataset
 
 
-def get_multitasks(epoch,warmup,losses=None):
+def get_multitasks(epoch,warmup,valid_tasks,losses=None):
     """Task To Train on
 
     Args:
@@ -22,7 +22,8 @@ def get_multitasks(epoch,warmup,losses=None):
         _type_: _description_
     """
     ## Do this Better by getting names from targets
-    all_tasks=["detection","backbone","keypoints","neck","rating"]
+    #all_tasks=["detection","backbone","keypoints","neck","rating"]
+    all_tasks=valid_tasks
     ## If losses are present then sample task based on probability of
     loss_weights=[]
     valid_tasks={}
@@ -157,7 +158,18 @@ class MultiTask_optimizers:
                         self.schedulers[task]= torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,factor=0.9,patience=10)
                         scheduler=self.schedulers[task]
                         return optimizer,scheduler
-            
+
+def get_dataloader(valid_tasks,dataloaders):
+    """Adjust Multi task loss yero out losses which should not contrinute in the current iteration
+
+    Args:
+        losses (Dict{key:val}): Loss for each task
+        valid_tasks (Dict{key:false}): Dict with valid and invalid task for each task
+    """
+    if valid_tasks:
+        for k,v in valid_tasks.items():
+            if v:
+                return dataloaders[k]
         
         
 def train_one_epoch(model, data_loader, device, epoch, print_freq,optim,prevlog=None,warmup=40):
@@ -218,6 +230,72 @@ def train_one_epoch(model, data_loader, device, epoch, print_freq,optim,prevlog=
         
     scheduler.step(metrics=metric_logger.meters.get("loss").value)
     return metric_logger,{target_task:loss_value}
+
+
+
+def train_one_epoch_seg_kp(model,device, epoch, print_freq,optim,dataloaders,prevlog=None,warmup=40):
+    
+    model.train()
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
+    header = "Epoch: [{}]".format(epoch)
+    # Sample Task
+    tasks=["detection","keypoints"]
+    valid_tasks=get_multitasks(epoch,warmup,tasks,prevlog)
+    #
+    # Equivalent to conditioning on one hot encoding of task
+    freeze_multitask(model,valid_tasks=valid_tasks)
+    
+    target_task=None
+    for task,v in valid_tasks.items():
+        if v:
+            target_task=task
+    
+    assert target_task!=None, f"Target task is {target_task} while valid tasks are {valid_tasks}"
+    
+    optimizer,scheduler=optim.get_optimizer(valid_tasks,model)
+    data_loader=get_dataloader(valid_tasks,dataloaders)
+    
+
+    #for k,v in model.roi_heads.mask_predictor.items():
+    #    for name, params in v.named_parameters():
+    #        print(k,name, params.requires_grad)
+
+    for images, targets in metric_logger.log_every(data_loader, print_freq, header):
+        
+        images = list(image.to(device) for image in images)
+        
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        
+        loss_dict = model(images, targets,valid_tasks)
+        # Multiplicative Task selection 
+        adjust_losses(loss_dict,valid_tasks=valid_tasks)
+
+        losses = sum(loss for loss in loss_dict.values())
+
+        # reduce losses over all GPUs for logging purposes
+        loss_dict_reduced = utils.reduce_dict(loss_dict)
+        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+
+        loss_value = losses_reduced.item()
+
+        if not math.isfinite(loss_value):
+            print("Loss is {}, stopping training".format(loss_value))
+            print(loss_dict_reduced)
+            sys.exit(1)
+
+        optimizer.zero_grad()
+        losses.backward()
+        optimizer.step()
+
+        #if lr_scheduler is not None:
+        #    lr_scheduler.step()
+        metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
+        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        
+    scheduler.step(metrics=metric_logger.meters.get("loss").value)
+    return metric_logger,{target_task:loss_value}
+
 
 
 def _get_iou_types(model):

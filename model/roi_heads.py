@@ -1019,12 +1019,8 @@ class RoIHeads(nn.Module):
                 assert pos_matched_idxs is not None
 
                 gt_keypoints = [t["keypoints"] for t in targets]
-                rcnn_loss_keypoint = keypointrcnn_loss(
-                    keypoint_logits, keypoint_proposals,
-                    gt_keypoints, pos_matched_idxs)
-                loss_keypoint = {
-                    "loss_keypoint": rcnn_loss_keypoint
-                }
+                rcnn_loss_keypoint = keypointrcnn_loss(keypoint_logits, keypoint_proposals,gt_keypoints, pos_matched_idxs)
+                loss_keypoint = {"loss_keypoint": rcnn_loss_keypoint}
             else:
                 assert keypoint_logits is not None
                 assert keypoint_proposals is not None

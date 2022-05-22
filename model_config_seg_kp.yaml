@@ -1,0 +1,38 @@
+# Specify things which we want to train multitask netowrk on. Base netowrk perorms object Detection using FasterRCN
+# valid types are regression, classification and segmetation and keypoints (all the image points can be specified in keypoints).
+# Make sure the dataloder loads all the label names specified by names below
+
+# Background plus Required classes
+numclasses: 2
+classes: ["cucumber"] 
+
+# Provide label name, classes and file location with labels for segmentation
+segmentation:
+    name: ["masks"]
+    # classes for which the above segmentation task is for
+    classes: [["cucumber"]]
+    file: None
+    
+
+# Provide label name, class, number of classes and file location with labels for classification 
+classification:
+    name: None
+    # For which class object the classification is required
+    classes: None
+    numclasses: None
+    file: None
+
+# Provide label name, class and file location with labels for regression
+regression:
+    name: [None]
+    # For which class the Regression is required
+    class: [None]
+    file: None
+
+# Provide label name, classes, num of keypoints and file location with labels for keypoint detection
+keypoints:
+    name: ["head","tail"] 
+    classes: ["cucumber"]  
+    num: 2
+    file: None
+    

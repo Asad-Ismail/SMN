@@ -1,3 +1,4 @@
+from matplotlib.pyplot import axes
 from torch.utils import data
 import torchvision.transforms as T
 import torch
@@ -10,12 +11,13 @@ from model.vegnet_v1 import *
 import yaml
 import argparse
 import cv2
+from utils.data_loader_seg_keypoints import  VegDetection,Vegkeypoint
 
 argp=argparse.ArgumentParser()
 argp.add_argument("--use-cudnn",type=bool,default=True)
-argp.add_argument("--config",type=str,default="model_config.yaml",help="Model Configuration")
+argp.add_argument("--config",type=str,default="model_config_seg_kp.yaml",help="Model Configuration")
 argp.add_argument("--data-dir",type=str,default="data/cucumber",help="Data Directory")
-argp.add_argument("--weights",type=str,default="/media/asad/8800F79D00F79104/multitask_weights/multitask_weights/2000_epoch_weights",help="Model Configuration")
+argp.add_argument("--weights",type=str,default="/media/asad/8800F79D00F79104/multitask_weights/multitask_weights/100_epoch_weights",help="Model Configuration")
 args=argp.parse_args()
 torch.backends.cudnn.benchmark=args.use_cudnn
 
@@ -30,26 +32,29 @@ def get_transform():
     return transform
 
         
-def vis_and_process_preds(image,prediction,dataset,test_th=0.90):
+def vis_and_process_preds(image,prediction,dataset,test_th=0.8):
     scores=prediction["scores"].cpu()
     classes=prediction["labels"].cpu()
     valid_scores=scores>=test_th
+    classes=classes[valid_scores]
     boxes=prediction["boxes"][valid_scores].cpu()
     keypoints=prediction["keypoints"][valid_scores].cpu()
-    masks=prediction["masks"][:,0][valid_scores].detach().squeeze().cpu()
-    bb=prediction["backbone"][:,0][valid_scores].detach().squeeze().cpu()
-    rate=prediction["rating"][valid_scores].cpu()
-    neck=prediction["neck"][valid_scores].cpu()
+    #masks=prediction["masks"][:,0][valid_scores].detach().squeeze().cpu()
+    masks=prediction["masks"][valid_scores].squeeze(dim=1).detach().cpu()
+    #bb=prediction["backbone"][:,0][valid_scores].detach().squeeze().cpu()
+    #rate=prediction["rating"][valid_scores].cpu()
+    #neck=prediction["neck"][valid_scores].cpu()
     image=image.cpu()
     label_map=[dataset.rev_class_map[i.item()] for i in classes]
     # visualize results
-    vis_data(image,masks,boxes,label_map,keypoints, other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
-        seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
+    #vis_data(image,masks,boxes,label_map,keypoints, other_masks={"backbone":bb},clas={"neck":neck,"rating":rate},\
+    #    seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
     
     #vis_data(image,masks,boxes,keypoints,label_map, \
     #    clas={"neck":neck,"rating":rate},\
     #    seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)
-    #vis_data(image,masks,boxes,keypoints,label_map,seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes) 
+    #vis_data(image,masks,boxes,label_map,keypoints,seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes) 
+    vis_data(image,masks,boxes,label_map,keypoints,seg_labels=["cucumbers"],clas_labels=["cucumber"],kp_labels=["cucumber"]) 
     #vis_data(image,masks,boxes,label_map,seg_labels=dataset.segm_classes,clas_labels=dataset.class_classes,kp_labels=dataset.kp_classes)  
  
 def build_model(config):
@@ -63,7 +68,7 @@ def build_model(config):
  
 if __name__=="__main__":
     data_dir=args.data_dir
-    dataset=VegDataset(data_dir, transform=get_transform())
+    #dataset=VegDataset(data_dir, transform=get_transform())
     model=build_model(config)    
     # read and build dataset loader
     #data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True,collate_fn=detection_utils.collate_fn)
@@ -73,7 +78,14 @@ if __name__=="__main__":
     model.to(device)
     model.load_state_dict(torch.load(args.weights))
     model.eval()
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1,  shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
+    #kp_train="/media/asad/8800F79D00F79104/hubdata/cucumber/keypoints"
+    #dataset=Vegkeypoint(kp_train,vis=False,transform=get_transform())
+    
+    det_train="/media/asad/8800F79D00F79104/hubdata/cucumber/detection"
+    dataset=VegDetection(det_train,classes=["cucumber"],vis=False,transform=get_transform())
+    
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False,collate_fn=detection_utils.collate_fn)
+    #data_loader = torch.utils.data.DataLoader(dataset, batch_size=1,  shuffle=False, num_workers=1,collate_fn=detection_utils.collate_fn)
     for i,(images,data) in enumerate(data_loader):
         images = list(image.to(device) for image in images)
         #writer.add_graph(model, [images])
