@@ -47,7 +47,7 @@ In summary, we have object detection problem, multiple instance segmtentation pr
 
 ### Example Input Image
   <p align="center">
-    <img src="figs/input.png" alt="animated" width=700 height=500 />
+    <img src="figs/input.png" alt="animated" width=700 height=450 />
   </p> 
   
 ### Example Annotated Image
