@@ -22,12 +22,11 @@ In an image we want to detect cucumbers, color board segment fruits, segment the
     <img src="figs/data.png" alt="animated" width=600 height=200/>
   </p>
   
-
-
+## Trained MultiTask Network for Detection and Keypoints using Sparse Data
   <p align="center">
     <img src="figs/MT.gif" alt="animated"  width=650 height=400  />
   </p>
-                                        
+                
 
 ## Background
 
