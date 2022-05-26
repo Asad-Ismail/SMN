@@ -9,6 +9,12 @@ A Scaleable MultiTask Network Framework for image-based Object detection, Instan
  
 First CNN network is for detection, segmentation, and keypoint detection like MaskRCNN which extracts the fruit patches or ROIs which are then fed to another network for multilabel classification and regression of each fruit. Figures below show this pipeline
 
+
+  <p align="center">
+    <img src="figs/MT.gif alt="animated" width=650 height=300 />
+  </p>
+  
+
   <p align="center">
     <img src="figs/masrcnn.png" alt="animated" width=650 height=300 />
   </p>
