@@ -15,6 +15,7 @@ In an image we want to detect cucumbers, color board segment fruits, segment the
   <p align="center">
     <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
   </p>
+  
 ### Example Sparse Supervision
 
   <p align="center">
