@@ -4,7 +4,7 @@
 
 
 A Scaleable MultiTask Network Framework for image-based Object detection, Instance segmenation, Keypoint detection, Classification and Regression.
-Our purpose is to solve to main problems while using deep neural network in production
+Our purpose is to solve two problems while using deep neural network in production
 
 1. Design scaleable multitask network with shared bakbone
 2. Handle dataset with sparse supervision
