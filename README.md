@@ -54,11 +54,8 @@ First CNN network is for detection, segmentation, and keypoint detection like Ma
 ### Training and Predictions
 
 1) Install requirements using pip install -r requirements.txt
-2) In this framework we can specify all the tasks using a config file as shown below.Modify the config file according to the task
-  
-  <p align="center">
-    <img src="figs/config.png" alt="animated" width=700 height=500 />
-  </p>
+2) The netowrk can be seamless extended to handle more tasks by changing the config file
+
   
 3) To train the netowrk run train_vegnet.py  
 4) To predcit run predict_vegnet.py 
