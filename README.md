@@ -10,11 +10,13 @@ Our purpose is to solve to main problems while using deep neural network for pro
 2. Handle dataset with sparse supervision
 
 ### Example Multi Task 
+
 In an image we want to detect cucumbers, color board segment fruits, segment their backbone, and also classify there neck and overall rating
   <p align="center">
     <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
   </p>
 ### Example Sparse Supervision
+
   <p align="center">
     <img src="figs/data.png" alt="animated" width=700 height=500 />
   </p>
