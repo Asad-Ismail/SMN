@@ -3,4 +3,7 @@
 *__pycache__/
 *.vscode/
 *weights/
+*res_images*/
+*res_images/*
+*data/seg_kp*
 

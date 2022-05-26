@@ -13,10 +13,10 @@ from torch.utils.data import Dataset
 import torchvision.transforms as T
 
 src_kp="hub://aismail2/complete_cucumber_keypoints"
-dst_kp="/media/asad/8800F79D00F79104/hubdata/cucumber/keypoints"
+dst_kp="/home/ec2-user/SageMaker/SMN/data/seg_kp/kp"
 
 src_det="hub://aismail2/cucumber_OD"
-dst_det="/media/asad/8800F79D00F79104/hubdata/cucumber/detection"
+dst_det="/home/ec2-user/SageMaker/SMN/data/seg_kp/seg"
 
 
 def save_json_image(json_name,image_name,img,data,dst_dir=""):
@@ -79,19 +79,19 @@ def get_data():
     np.random.seed(12)
     # make train and valid dataset in dst dir
     ## Get Detection data
-    #ds = hub.load(src_det)
+    ds = hub.load(src_det)
     #print(f"Detection Dataset size is {len(ds)}")
-    #val_size=10
-    #val_indices=np.random.choice(np.arange(len(ds.tensors["images"])), val_size)
-    #train_dir=dst_det+"/train"
-    #val_dir=dst_det+"/val"
-    #os.makedirs(train_dir,exist_ok=True)
-    #os.makedirs(val_dir,exist_ok=True)
-    #for i in tqdm(val_indices):
-    #    save_annotation(ds,i,val_dir)
-    #train_indices=[i for i in range(len(ds.tensors["images"])) if i not in val_indices]
-    #for i in tqdm(train_indices):
-    #    save_annotation(ds,i,train_dir)
+    val_size=10
+    val_indices=np.random.choice(np.arange(len(ds.tensors["images"])), val_size)
+    train_dir=dst_det+"/train"
+    val_dir=dst_det+"/val"
+    os.makedirs(train_dir,exist_ok=True)
+    os.makedirs(val_dir,exist_ok=True)
+    for i in tqdm(val_indices):
+        save_annotation(ds,i,val_dir)
+    train_indices=[i for i in range(len(ds.tensors["images"])) if i not in val_indices]
+    for i in tqdm(train_indices):
+        save_annotation(ds,i,train_dir)
     
     ## Get Point Data
     ## Get Detection data
@@ -442,8 +442,8 @@ def get_transform():
     return transform     
 
 if __name__=="__main__":
-    #get_data()
-    dl=VegDetection(dst_det,classes=["cucumber"],vis=True,transform=get_transform())
+    get_data()
+    #dl=VegDetection(dst_det,classes=["cucumber"],vis=True,transform=get_transform())
     #dl_kp=Vegkeypoint(dst_kp,vis=True,transform=get_transform())
-    for idx in range(len(dl)):
-        image,target=dl[idx]
+    #for idx in range(len(dl)):
+    #    image,target=dl[idx]

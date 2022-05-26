@@ -8,6 +8,7 @@ import random
 from . import detection_utils as utils
 from .coco_eval import CocoEvaluator
 from .coco_utils import get_coco_api_from_dataset
+from .util import vis_data
 
 
 def get_multitasks(epoch,warmup,valid_tasks,losses=None):
@@ -134,7 +135,7 @@ def adjust_losses(losses,valid_tasks):
                     losses["loss_keypoint"]*=0.0
             if k in losses.keys():
                 if not v:
-                    losses[k]=0.0
+                    losses[k]*=0.0
 
 
 class MultiTask_optimizers:
@@ -153,9 +154,9 @@ class MultiTask_optimizers:
                         return optimizer,scheduler
                     else:
                         params = [p for p in model.parameters() if p.requires_grad]
-                        self.optimizers[task]= torch.optim.AdamW(params, lr=1e-3,weight_decay=0)
+                        self.optimizers[task]= torch.optim.AdamW(params, lr=1e-4)
                         optimizer=self.optimizers[task]
-                        self.schedulers[task]= torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,factor=0.9,patience=10)
+                        self.schedulers[task]= torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,factor=0.7,patience=10)
                         scheduler=self.schedulers[task]
                         return optimizer,scheduler
 
@@ -233,11 +234,28 @@ def train_one_epoch(model, data_loader, device, epoch, print_freq,optim,prevlog=
 
 
 
+def vis_and_process_preds(image,prediction,test_th=0.2,epoch=None):
+    scores=prediction["scores"].cpu()
+    classes=prediction["labels"].cpu()
+    valid_scores=scores>=test_th
+    classes=classes[valid_scores]
+    classes=[int(i.item()) for i in classes]
+    boxes=prediction["boxes"][valid_scores].cpu()
+    keypoints=prediction["keypoints"][valid_scores].cpu()
+    masks=prediction["masks"][valid_scores].squeeze(dim=1).detach().cpu()
+    image=image.cpu()
+    label_map=["cucumber"]*len(classes)
+    if epoch is None:
+        vis_data(image,masks,boxes,label_map,keypoints=None,seg_labels=["cucumbers"],clas_labels=["cucumber"],kp_labels=["cucumber"]) 
+    else:
+        vis_data(image,masks,boxes,label_map,keypoints=keypoints,seg_labels=["cucumbers"],clas_labels=["cucumber"],kp_labels=["cucumber"],epoch=epoch)
+
+
 def train_one_epoch_seg_kp(model,device, epoch, print_freq,optim,dataloaders,prevlog=None,warmup=40):
     
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
+    metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.9f}"))
     header = "Epoch: [{}]".format(epoch)
     # Sample Task
     tasks=["detection","keypoints"]
@@ -294,6 +312,18 @@ def train_one_epoch_seg_kp(model,device, epoch, print_freq,optim,dataloaders,pre
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         
     scheduler.step(metrics=metric_logger.meters.get("loss").value)
+    model.eval()
+    for images, targets in metric_logger.log_every(data_loader, print_freq, header):
+        print(f"Visualization")
+        print(f"*"*100)
+        images = list(image.to(device) for image in images)
+        #images=list(images[0])
+        predictions = model(images) 
+        prediction=predictions[0]
+        vis_and_process_preds(images[0],prediction,epoch=epoch)
+        break
+    model.train()
+    
     return metric_logger,{target_task:loss_value}
 
 

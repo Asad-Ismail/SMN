@@ -449,9 +449,10 @@ def vis_data(image, masks, bboxs,classes,keypoints=None,**kwargs):
          
     vis_img=resize_images_cv(vis_img)
     #if"" kwargs["DEBUG"]:
-    cv2.imwrite("ann_input.png",vis_img)
-    cv2.imshow("Input and labels", vis_img)
-    cv2.waitKey(0)
+    if "epoch" in  kwargs:
+        cv2.imwrite("/home/ec2-user/SageMaker/SMN/res_images/"+f"{kwargs['epoch']}"+".png",vis_img)
+    #cv2.imshow("Input and labels", vis_img)
+    #cv2.waitKey(0)
 
 
 

@@ -540,6 +540,7 @@ def vegnet_resnet50_fpn(pretrained=False, progress=True,num_classes=2, num_keypo
     if pretrained:
         #key='keypointrcnn_resnet50_fpn_coco'
         key="maskrcnn_resnet50_fpn_coco"
+        print(f"***********Loading Coco Pretrained Model ****************")
         if pretrained == 'legacy':
             key += '_legacy'
         state_dict = load_state_dict_from_url(model_urls[key],
