@@ -16,10 +16,10 @@ In an image we want to detect cucumbers, color board segment fruits, segment the
     <img src="figs/ann_input.png" alt="animated" width=700 height=500 />
   </p>
   
-### Example Sparse Supervision
+### Example Sparse Supervision Data
 
   <p align="center">
-    <img src="figs/data.png" alt="animated" width=700 height=500 />
+    <img src="figs/data.png" alt="animated" />
   </p>
   
 * Pipeiline of an Instance segmentation network like MaskRCNN with Keypoint Detector followed by seperate CNNs for per fruit classification/regression
